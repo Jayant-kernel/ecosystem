@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { View } from '../App';
 import { JAVASCRIPT_COURSE } from '../constants';
 import { useCourseProgress } from '../hooks/useCourseProgress';
+import { useUserStats, formatTimeSpent } from '../hooks/useUserStats';
 import { useAuth } from '../contexts/AuthContext';
-import { StatCard, ActivityChart, DailyGoalsWidget } from '../components/DashboardWidgets';
+import { StatCard, DailyGoalsWidget } from '../components/DashboardWidgets';
+import { StopwatchWidget } from '../components/StopwatchWidget';
 import CourseDetailsModal from '../components/CourseDetailsModal';
 import CertificateModal from '../components/CertificateModal';
 
@@ -16,21 +18,15 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
   const { progress } = useCourseProgress(JAVASCRIPT_COURSE.id);
   const [showDetails, setShowDetails] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
+  const [showAddQuest, setShowAddQuest] = useState(false);
+  const [newQuestTitle, setNewQuestTitle] = useState('');
 
   const totalLessons = JAVASCRIPT_COURSE.modules.reduce((acc, module) => acc + module.lessons.length, 0);
   const completedLessonsCount = progress.completedLessons.length;
   const progressPercentage = totalLessons > 0 ? (completedLessonsCount / totalLessons) * 100 : 0;
 
-  // Mock Data for Widgets
-  const activityData = [
-    { label: 'Mon', value: 45 },
-    { label: 'Tue', value: 60 },
-    { label: 'Wed', value: 30 },
-    { label: 'Thu', value: 85 },
-    { label: 'Fri', value: 50 },
-    { label: 'Sat', value: 20 },
-    { label: 'Sun', value: 0 },
-  ];
+  // Get real-time stats from Firebase
+  const { totalXP, dayStreak, totalTimeMinutes, isLoading: statsLoading } = useUserStats(completedLessonsCount);
 
   const [goals, setGoals] = useState([
     { id: '1', title: 'Complete 2 Lessons', completed: false },
@@ -40,6 +36,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
 
   const toggleGoal = (id: string) => {
     setGoals(goals.map(g => g.id === id ? { ...g, completed: !g.completed } : g));
+  };
+
+  const addQuest = () => {
+    if (!newQuestTitle.trim()) return;
+    const newGoal = {
+      id: Date.now().toString(),
+      title: newQuestTitle.trim(),
+      completed: false
+    };
+    setGoals([...goals, newGoal]);
+    setNewQuestTitle('');
+    setShowAddQuest(false);
   };
 
   return (
@@ -64,18 +72,41 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
             <button className="h-10 px-4 rounded-full bg-zinc-900 border border-white/10 text-zinc-400 text-sm font-medium hover:text-white hover:border-white/20 transition-all flex items-center gap-2">
               <i className="fas fa-calendar-alt"></i> Today
             </button>
-            <button className="h-10 w-10 rounded-full bg-zinc-800 text-zinc-400 border border-white/5 flex items-center justify-center hover:bg-zinc-700 hover:text-white transition-colors">
+            <button
+              onClick={() => setShowAddQuest(true)}
+              className="h-10 w-10 rounded-full bg-zinc-800 text-zinc-400 border border-white/5 flex items-center justify-center hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all"
+              title="Add Daily Quest"
+            >
               <i className="fas fa-plus"></i>
             </button>
           </div>
         </header>
 
-        {/* Stats Row */}
+        {/* Stats Row - Real-time data */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total XP" value="2,450" icon="fa-bolt" trend="+12% this week" />
-          <StatCard label="Day Streak" value="5 Days" icon="fa-fire" trend="On fire!" />
-          <StatCard label="Lessons Done" value={completedLessonsCount} icon="fa-check-circle" />
-          <StatCard label="Time Spent" value="12h 30m" icon="fa-clock" />
+          <StatCard
+            label="Total XP"
+            value={statsLoading ? '...' : totalXP.toLocaleString()}
+            icon="fa-bolt"
+            trend={totalXP > 0 ? `+${completedLessonsCount * 50} XP` : undefined}
+          />
+          <StatCard
+            label="Day Streak"
+            value={statsLoading ? '...' : `${dayStreak} ${dayStreak === 1 ? 'Day' : 'Days'}`}
+            icon="fa-fire"
+            trend={dayStreak >= 3 ? 'On fire!' : undefined}
+          />
+          <StatCard
+            label="Lessons Done"
+            value={completedLessonsCount}
+            icon="fa-check-circle"
+            trend={completedLessonsCount > 0 ? `${Math.round(progressPercentage)}% complete` : undefined}
+          />
+          <StatCard
+            label="Time Spent"
+            value={statsLoading ? '...' : formatTimeSpent(totalTimeMinutes)}
+            icon="fa-clock"
+          />
         </div>
 
         {/* Main Grid: Activity + Courses vs Sidebar */}
@@ -83,8 +114,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
 
           {/* Left Column (2/3) */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Activity Graph */}
-            <ActivityChart data={activityData} />
+            {/* Learning Timer - Stopwatch */}
+            <StopwatchWidget />
 
             {/* Course Cards Section */}
             <div>
@@ -192,6 +223,51 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
         onClose={() => setShowCertificate(false)}
         courseName="JavaScript Mastery"
       />
+
+      {/* Add Quest Modal */}
+      {showAddQuest && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 font-manrope">
+              <i className="fas fa-plus-circle text-orange-500"></i>
+              Add Daily Quest
+            </h3>
+
+            <input
+              type="text"
+              value={newQuestTitle}
+              onChange={(e) => setNewQuestTitle(e.target.value)}
+              placeholder="e.g., Complete 1 lesson today"
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500/50 mb-4"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && addQuest()}
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowAddQuest(false);
+                  setNewQuestTitle('');
+                }}
+                className="flex-1 px-4 py-3 rounded-xl bg-white/5 text-zinc-400 hover:bg-white/10 transition-all font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addQuest}
+                disabled={!newQuestTitle.trim()}
+                className={`flex-1 px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${newQuestTitle.trim()
+                  ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white hover:from-orange-500 hover:to-orange-400'
+                  : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                  }`}
+              >
+                <i className="fas fa-plus"></i>
+                Add Quest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

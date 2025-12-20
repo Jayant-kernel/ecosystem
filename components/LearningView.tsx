@@ -5,6 +5,7 @@ import { Course, Lesson, Transcript, ConsoleOutput, TestResult } from '../types'
 import RoadmapSidebar from './RoadmapSidebar';
 import { useCourseProgress } from '../hooks/useCourseProgress';
 import { useLiveTutor } from '../hooks/useLiveTutor';
+import { useLearningActivity } from '../hooks/useLearningActivity';
 import LearningHeader from './LearningHeader';
 import ConversationPanel from './ConversationPanel';
 import CodeWorkspace from './CodeWorkspace';
@@ -19,8 +20,17 @@ interface LearningViewProps {
 
 const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     const { progress, updateProgress, completeLesson } = useCourseProgress(course.id);
+    const { startTracking, stopTracking } = useLearningActivity();
     const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
     const [isCompleting, setIsCompleting] = useState(false);
+
+    // Start tracking time when component mounts, stop when unmounts
+    useEffect(() => {
+        startTracking();
+        return () => {
+            stopTracking();
+        };
+    }, [startTracking, stopTracking]);
 
     // Initialize sidebar closed on mobile, open on desktop
     const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);

@@ -33,7 +33,33 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
 }) => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'guide' | 'tutor' | 'notes'>('guide');
-    const { notes, updateNotes, isLoading: isNotesLoading, isSaving } = useUserNotes();
+    const [showSavedNotes, setShowSavedNotes] = useState(false);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [customFileName, setCustomFileName] = useState('');
+    const { notes, updateNotes, isLoading: isNotesLoading, isSaving, savedNotes } = useUserNotes(
+        currentLesson?.id,
+        currentLesson?.title
+    );
+
+    // Function to save notes as a file
+    const handleSaveToFile = () => {
+        if (!notes.trim()) return;
+
+        const fileName = customFileName.trim() || currentLesson?.title || 'my-notes';
+        const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
+        const blob = new Blob([notes], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${sanitizedFileName}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        setShowSaveModal(false);
+        setCustomFileName('');
+    };
 
     // Keyboard shortcut for Mute (Alt + M)
     useEffect(() => {
@@ -221,15 +247,131 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
 
                 {activeTab === 'notes' && (
                     <div className="flex-grow p-4 flex flex-col min-h-0">
+                        {/* Header with current lesson and toggle */}
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex-1">
+                                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Notes for:</h4>
+                                <p className="text-sm text-white font-medium truncate">
+                                    {currentLesson?.title || 'Select a lesson'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowSavedNotes(!showSavedNotes)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${showSavedNotes
+                                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+                                    : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/10'
+                                    }`}
+                            >
+                                <i className="fas fa-folder-open"></i>
+                                Saved ({savedNotes.length})
+                            </button>
+                        </div>
+
+                        {/* Saved Notes Panel */}
+                        {showSavedNotes && savedNotes.length > 0 && (
+                            <div className="mb-3 p-3 bg-black/30 rounded-xl border border-white/5 max-h-40 overflow-y-auto custom-scrollbar">
+                                <h5 className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">All Saved Notes</h5>
+                                <div className="space-y-1">
+                                    {savedNotes.map((note) => (
+                                        <div
+                                            key={note.lessonId}
+                                            className={`p-2 rounded-lg text-xs cursor-pointer transition-all ${note.lessonId === currentLesson?.id
+                                                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/20'
+                                                : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-transparent'
+                                                }`}
+                                        >
+                                            <p className="font-medium truncate">{note.lessonTitle}</p>
+                                            <p className="text-[10px] text-zinc-600 mt-0.5">
+                                                {note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : ''}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {showSavedNotes && savedNotes.length === 0 && (
+                            <div className="mb-3 p-4 bg-black/30 rounded-xl border border-white/5 text-center">
+                                <i className="fas fa-sticky-note text-2xl text-zinc-600 mb-2"></i>
+                                <p className="text-xs text-zinc-500">No saved notes yet. Start writing!</p>
+                            </div>
+                        )}
+
+                        {/* Text Area */}
                         <textarea
                             className="flex-grow w-full bg-zinc-900/50 border border-white/10 rounded-xl p-4 text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 resize-none transition-all"
-                            placeholder="Type your notes here... (Auto-saved)"
+                            placeholder={currentLesson ? "Type your notes for this lesson... (Auto-saved)" : "Select a lesson to start taking notes"}
                             value={notes}
                             onChange={(e) => updateNotes(e.target.value)}
+                            disabled={!currentLesson}
                         ></textarea>
-                        <p className="text-[10px] text-zinc-600 mt-2 text-right">
-                            {isSaving ? 'Saving...' : 'Saved'}
-                        </p>
+
+                        {/* Footer with status and Save button */}
+                        <div className="flex items-center justify-between mt-2">
+                            <p className="text-[10px] text-zinc-600">
+                                {!currentLesson ? 'No lesson selected' : isSaving ? 'Saving...' : notes ? 'Saved to cloud' : 'Start typing...'}
+                            </p>
+                            <button
+                                onClick={() => {
+                                    setCustomFileName(currentLesson?.title || '');
+                                    setShowSaveModal(true);
+                                }}
+                                disabled={!notes.trim()}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${notes.trim()
+                                        ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 shadow-lg shadow-orange-500/20'
+                                        : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+                                    }`}
+                            >
+                                <i className="fas fa-download"></i>
+                                Save to File
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Save to File Modal */}
+                {showSaveModal && (
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-zinc-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <i className="fas fa-file-export text-orange-500"></i>
+                                Save Notes to File
+                            </h3>
+
+                            <div className="mb-4">
+                                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2 block">File Name</label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={customFileName}
+                                        onChange={(e) => setCustomFileName(e.target.value)}
+                                        placeholder="Enter file name..."
+                                        className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-orange-500/50"
+                                        autoFocus
+                                    />
+                                    <span className="text-zinc-500 text-sm">.txt</span>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowSaveModal(false);
+                                        setCustomFileName('');
+                                    }}
+                                    className="flex-1 px-4 py-2 rounded-lg bg-white/5 text-zinc-400 hover:bg-white/10 transition-all text-sm font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveToFile}
+                                    className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 transition-all text-sm font-medium flex items-center justify-center gap-2"
+                                >
+                                    <i className="fas fa-save"></i>
+                                    Save
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

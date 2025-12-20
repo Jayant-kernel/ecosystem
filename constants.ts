@@ -24,7 +24,8 @@ export const JAVASCRIPT_COURSE: Course = {
     "A computer with internet access",
     "Basic understanding of how to use a web browser"
   ],
-  modules: rawDb.course.modules
+  // Keep only the first 3 modules for a focused learning experience
+  modules: rawDb.course.modules.slice(0, 3)
 };
 
 export const INITIAL_PROGRESS = {

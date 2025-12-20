@@ -24,7 +24,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ navigateTo }) => {
         },
         {
             name: 'Pro',
-            price: billingCycle === 'monthly' ? 29 : 24,
+            price: billingCycle === 'monthly' ? 499 : 399,
             description: 'For serious learners who want mastery.',
             features: [
                 'Unlimited voice sessions',
@@ -39,7 +39,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ navigateTo }) => {
         },
         {
             name: 'Team',
-            price: billingCycle === 'monthly' ? 99 : 89,
+            price: billingCycle === 'monthly' ? 1999 : 1599,
             description: 'Scale your team\'s engineering skills.',
             features: [
                 'Everything in Pro',
@@ -106,7 +106,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ navigateTo }) => {
                             </div>
 
                             <div className="mb-8 flex items-baseline">
-                                <span className="text-5xl font-bold font-manrope tracking-tight">${plan.price}</span>
+                                <span className="text-5xl font-bold font-manrope tracking-tight">₹{plan.price}</span>
                                 <span className="text-zinc-500 ml-2">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
                             </div>
 

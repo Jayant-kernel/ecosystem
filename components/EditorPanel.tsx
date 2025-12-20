@@ -21,7 +21,6 @@ const EditorPanel: React.FC<EditorPanelProps> = ({ code, onCodeChange, readOnly 
             minimap: { enabled: false },
             fontSize: 14,
             readOnly: readOnly,
-            wordWrap: 'on',
             scrollBeyondLastLine: false,
             automaticLayout: true,
           }}

@@ -36,6 +36,13 @@ export interface UserNotes {
     updatedAt?: any;
 }
 
+export interface LessonNote {
+    lessonId: string;
+    lessonTitle: string;
+    content: string;
+    updatedAt?: any;
+}
+
 export interface Transcript {
     user: string;
     ai: string;
