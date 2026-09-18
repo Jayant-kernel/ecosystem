@@ -10,6 +10,7 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@google/genai": "1.33.0",
     "@monaco-editor/react": "^4.6.0",
     "firebase": "^10.13.1",
     "react": "^18.2.0",

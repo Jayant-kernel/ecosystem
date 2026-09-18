@@ -1,16 +1,16 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Course, Lesson, Transcript, ConsoleOutput, TestResult, TutorToolCall, TutorToolResponse } from '../types';
+import { FunctionCall, FunctionResponse } from "@google/genai";
+import { Course, Lesson, Transcript, ConsoleOutput, TestResult } from '../types';
 import RoadmapSidebar from './RoadmapSidebar';
 import { useCourseProgress } from '../hooks/useCourseProgress';
-import { useVoiceTutor } from '../hooks/useVoiceTutor';
+import { useLiveTutor } from '../hooks/useLiveTutor';
 import { useLearningActivity } from '../hooks/useLearningActivity';
 import LearningHeader from './LearningHeader';
 import ConversationPanel from './ConversationPanel';
 import CodeWorkspace from './CodeWorkspace';
 import LearningFooter from './LearningFooter';
 import { executeCodeSafely, executeTests } from '../utils/codeExecutor';
-import { voiceService } from '../services/voiceService';
 import { View } from '../App';
 
 interface LearningViewProps {
@@ -70,23 +70,9 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         }, 50);
     };
 
-    const handleRunCode = useCallback(async () => {
+    const handleRunCode = useCallback(() => {
         setConsoleOutput([]);
-        const code = editorCodeRef.current;
-
-        // Prefer the AWS Lambda sandbox; fall back to in-browser execution when
-        // no backend is configured (e.g. local dev without VITE_API_BASE_URL).
-        if (voiceService.isConfigured()) {
-            try {
-                const { output } = await voiceService.executeCode(code);
-                setConsoleOutput(output || []);
-                return;
-            } catch (error) {
-                console.warn('Remote execution failed, falling back to local:', error);
-            }
-        }
-
-        executeCodeSafely(code, (output) => {
+        executeCodeSafely(editorCodeRef.current, (output) => {
             setConsoleOutput(prev => [...prev, output]);
         });
     }, []);
@@ -152,8 +138,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         }
     };
 
-    const handleToolCall = useCallback(async (functionCalls: TutorToolCall[]): Promise<TutorToolResponse[]> => {
-        const responses: TutorToolResponse[] = [];
+    const handleToolCall = useCallback(async (functionCalls: FunctionCall[]): Promise<FunctionResponse[]> => {
+        const responses: FunctionResponse[] = [];
         for (const fc of functionCalls) {
             switch (fc.name) {
                 case 'writeCode':
@@ -221,7 +207,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         stopSession,
         toggleMute,
         sessionError
-    } = useVoiceTutor(onStreamMessage, handleToolCall, progress, currentLesson, editorCodeRef);
+    } = useLiveTutor(onStreamMessage, handleToolCall, progress, currentLesson);
 
     const handleLessonClick = useCallback(async (lessonId: string) => {
         await updateProgress({ currentLessonId: lessonId });
