@@ -49,6 +49,19 @@ export interface Transcript {
     isFinal: boolean;
 }
 
+// --- Voice tutor tool-calling (provider-agnostic) ---
+export interface TutorToolCall {
+    id: string;
+    name: string;
+    args: Record<string, any>;
+}
+
+export interface TutorToolResponse {
+    id: string;
+    name: string;
+    response: { result?: any; error?: string };
+}
+
 export interface ConsoleOutput {
     type: 'log' | 'error' | 'warn' | 'info';
     message: string;

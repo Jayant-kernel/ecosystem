@@ -1,0 +1,17 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "voicecode-backend"
+region = "ap-south-1"
+capabilities = "CAPABILITY_IAM"
+
+[default.build.parameters]
+cached = true
+
+[default.deploy.parameters]
+resolve_s3 = true
+confirm_changeset = false
+# Secrets are intentionally NOT stored here. Pass them on the command line:
+#   sam deploy --parameter-overrides \
+#     ElevenLabsApiKey=sk_xxx \
+#     ElevenLabsVoiceId=<your-voice-id>

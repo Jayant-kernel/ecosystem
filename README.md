@@ -1,39 +1,42 @@
-# 🎙️ EcoCode.ai - AI-Powered  Coding Tutor Ecosystem
+# 🎙️ VoiceCode.ai — Voice-Powered AI Coding Tutor
 
-<div align="center">
-
-![VoiceCode Banner](https://img.shields.io/badge/VoiceCode.ai-Learn%20by%20Speaking-orange?style=for-the-badge)
-
-**The World's First Voice-Powered AI Coding Tutor**
-
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![Firebase](https://img.shields.io/badge/Firebase-Auth%20%26%20DB-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
-[![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-4285F4?style=flat-square&logo=google)](https://ai.google.dev/)
-
-</div>
+Learn to code by talking to an AI tutor. Your voice is transcribed, answered by
+**Claude 3 Haiku on Amazon Bedrock**, and spoken back to you.
 
 ---
 
-## 🎯 The Problem We Solve
+## 🏗️ Architecture
 
-> **"Traditional coding tutorials are passive and boring. Learners watch videos, read docs, but never truly interact."**
+Custom voice pipeline — **no ElevenLabs Conversational AI Agent**:
 
-**VoiceCode.ai** transforms learning to code into a **real conversation**. Just speak to your AI tutor like you would to a human mentor. Ask questions, get instant answers, and watch code appear on your screen in real-time. No more pausing videos or copy-pasting code.
+```
+Frontend (microphone, MediaRecorder)
+        ↓  multipart/form-data: audio=<file>
+AWS API Gateway  (POST /voice)
+        ↓
+LlmBridgeFunction (Lambda, nodejs20.x, arm64, ap-south-1)
+        ├── ElevenLabs STT  (scribe_v2)  → transcript
+        ├── Amazon Bedrock  (Claude 3 Haiku) → response text
+        └── ElevenLabs TTS  (eleven_flash_v2_5) → audio bytes
+        ↓  { transcript, response, audio(base64), toolCalls }
+Frontend → speaker
+```
 
----
+- **ElevenLabs is used only for STT and TTS.**
+- The **ElevenLabs API key stays server-side** in the Lambda and is never sent
+  to the browser.
+- **Bedrock is the LLM brain** (`anthropic.claude-3-haiku-20240307-v1:0`),
+  called with the Lambda execution role (no hardcoded credentials).
 
-## ✨ Key Features
+### Request flow
 
-| Feature | Description |
-|---------|-------------|
-| 🎤 **Voice-First Learning** | Talk naturally to your AI tutor - ask questions, request examples |
-| 🤖 **Responsive AI Tutor** | Powered by Gemini 2.5 Flash - answers YOUR questions, not a script |
-| ⏱️ **Real-Time Stopwatch** | Track your learning sessions with persistent timer |
-| 📊 **Live Dashboard Stats** | XP, streak, lessons completed - all real-time from Firebase |
-| 💻 **Live Code Editor** | AI writes code in the editor as it explains concepts |
-| 🎯 **Daily Quests** | Gamified learning with customizable daily goals |
+1. User taps the mic → browser records audio with `MediaRecorder`.
+2. User taps again → audio is uploaded to `POST /voice` as `multipart/form-data`.
+3. The Lambda calls ElevenLabs STT → transcript.
+4. The transcript (+ session context and editor code) goes to Bedrock Claude 3 Haiku.
+5. Claude's reply is synthesized by ElevenLabs TTS → MP3 bytes.
+6. The Lambda returns transcript + response + base64 audio + any tool calls.
+7. The frontend shows the transcript/response and plays the audio.
 
 ---
 
@@ -41,122 +44,122 @@
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | React 18 + TypeScript |
-| **Bundler** | Vite 5 |
-| **Styling** | Tailwind CSS |
-| **AI/Voice** | Google Gemini 2.5 Flash Native Audio API |
+| **Frontend** | React 18 + TypeScript, Vite 5 |
 | **Auth & DB** | Firebase (Authentication + Firestore) |
 | **Editor** | Monaco Editor |
-| **Hosting** | Vercel |
+| **STT / TTS** | ElevenLabs (`scribe_v2`, `eleven_flash_v2_5`) |
+| **LLM** | Amazon Bedrock — Claude 3 Haiku (`anthropic.claude-3-haiku-20240307-v1:0`) |
+| **API / Compute** | Amazon API Gateway + AWS Lambda (SAM) |
+| **Region** | `ap-south-1` |
 
 ---
 
-## 🔑 API Keys Required
+## 🔌 API Endpoints
 
-```env
-# .env file
-API_KEY=your_google_gemini_api_key
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/voice` | Audio in → `{ sessionId, transcript, response, audio, audioMimeType, audioEncoding, toolCalls }` |
+| `GET` | `/session` | Issues a `{ sessionId }` for conversation context |
+| `POST` | `/execute` | Runs learner JavaScript in a server-side sandbox |
+
+`POST /voice` accepts either:
+
+- `multipart/form-data` with an `audio` file (preferred), plus optional
+  `sessionId`, `history` (JSON), `lessonTitle`, `objectives`, `aiMemory`, `editorCode`; or
+- `application/json` with a base64 `audio` field (used by tests/tools).
+
+> **Audio representation:** TTS output is returned as base64 in JSON for
+> simplicity and because responses are short (1–3 sentences). For long audio,
+> switch to returning binary/streaming to avoid the ~33% base64 overhead.
+
+---
+
+## 🔑 Environment Variables
+
+| Variable | Where | Frontend-safe? | Description |
+|----------|-------|:--------------:|-------------|
+| `VITE_API_BASE_URL` | Frontend | ✅ | API Gateway base URL (e.g. `https://xxxx.execute-api.ap-south-1.amazonaws.com/prod`) |
+| `ELEVENLABS_API_KEY` | Backend | ❌ **never** | ElevenLabs API key (STT + TTS) |
+| `ELEVENLABS_VOICE_ID` | Backend | ❌ | ElevenLabs voice id used for TTS |
+
+Optional backend overrides (defaults shown): `BEDROCK_MODEL_ID=anthropic.claude-3-haiku-20240307-v1:0`,
+`BEDROCK_REGION=ap-south-1`, `STT_MODEL_ID=scribe_v2`, `TTS_MODEL_ID=eleven_flash_v2_5`.
+
+> `ELEVENLABS_API_KEY` must **never** be prefixed with `VITE_` and must never be
+> committed. `.env` is gitignored — use `.env.example` as the template.
+
+---
+
+## ✅ AWS Requirements
+
+- AWS CLI, configured with credentials that can create Lambda/API Gateway/IAM/CloudFormation resources.
+- AWS SAM CLI.
+- Region **`ap-south-1`**.
+- **Bedrock model access** enabled for `anthropic.claude-3-haiku-20240307-v1:0` in `ap-south-1`.
+- An ElevenLabs API key and a voice id (from your ElevenLabs workspace).
+
+---
+
+## 🚀 Quick Start (frontend)
+
+```bash
+npm install
+cp .env.example .env          # fill in VITE_API_BASE_URL
+npm run dev                   # http://localhost:5173
 ```
 
-| API | Description | Get It From |
-|-----|-------------|-------------|
-| **Gemini API** | Powers the AI voice tutor | [Google AI Studio](https://aistudio.google.com/app/apikey) |
-| **Firebase** | Auth & Database (configured in `lib/firebase.ts`) | [Firebase Console](https://console.firebase.google.com/) |
+## ☁️ Deploy (backend)
+
+```bash
+sam build --template infra/template.yaml
+
+sam deploy --guided --template infra/template.yaml \
+  --parameter-overrides \
+    ElevenLabsApiKey=<your-key> \
+    ElevenLabsVoiceId=<your-voice-id>
+```
+
+Copy the `ApiBaseUrl` stack output into `.env` as `VITE_API_BASE_URL`, then
+rebuild the frontend. That's it — no ElevenLabs agent configuration step.
+
+## 🧪 Tests
+
+```bash
+npm test        # unit tests: STT, Bedrock, TTS, full pipeline, error handling
+npm run build   # type-check + production build
+```
+
+External APIs are mocked in tests — no real ElevenLabs/Bedrock calls are made.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-VoiceCode.ai/
-├── 📄 index.html              # Entry point
-├── 📄 index.tsx               # React root
-├── 📄 App.tsx                 # Main app & routing
-├── 📄 vite.config.ts          # Vite configuration
-├── 📄 .env                    # API keys (not committed)
-│
-├── 📁 components/             # React UI Components
-│   ├── ConversationPanel.tsx  # AI chat & notes interface
-│   ├── CodeWorkspace.tsx      # Monaco editor + console
-│   ├── LearningView.tsx       # Main lesson interface
-│   ├── StopwatchWidget.tsx    # Real-time learning timer
-│   ├── DashboardWidgets.tsx   # Stats cards & charts
-│   ├── RoadmapSidebar.tsx     # Course navigation
-│   └── ...
-│
-├── 📁 pages/                  # Page components
-│   ├── DashboardPage.tsx      # User dashboard
-│   ├── CoursesPage.tsx        # Course catalog
-│   ├── PricingPage.tsx        # Pricing plans
-│   ├── LoginPage.tsx          # Authentication
-│   └── SignupPage.tsx         # Registration
-│
-├── 📁 hooks/                  # Custom React Hooks
-│   ├── useLiveTutor.ts        # Voice AI connection
-│   ├── useLearningActivity.ts # Activity tracking
-│   ├── useUserStats.ts        # Dashboard stats
-│   ├── useCourseProgress.ts   # Lesson progress
-│   └── useUserNotes.ts        # Notes management
-│
-├── 📁 services/               # API & Backend Services
-│   ├── geminiService.ts       # Gemini AI integration
-│   └── dbService.ts           # Firebase Firestore
-│
-├── 📁 contexts/               # React Context Providers
-│   └── AuthContext.tsx        # Authentication state
-│
-├── 📁 lib/                    # Library configurations
-│   └── firebase.ts            # Firebase initialization
-│
-├── 📁 utils/                  # Utility functions
-│   ├── audio.ts               # Audio processing
-│   └── codeExecutor.ts        # Safe code execution
-│
-└── 📄 types.ts                # TypeScript interfaces
+├── components/            # React UI (ConversationPanel, CodeWorkspace, LearningView...)
+├── hooks/useVoiceTutor.ts # MediaRecorder -> POST /voice -> play audio
+├── services/voiceService.ts # Backend client (session, voice, execute)
+├── services/dbService.ts  # Firebase Firestore
+├── lib/firebase.ts        # Firebase config
+├── infra/
+│   ├── template.yaml      # SAM: API Gateway + Lambdas
+│   └── src/
+│       ├── llm-bridge/    # /voice pipeline: elevenlabs.mjs, bedrock.mjs, tutor.mjs
+│       └── execute-code/  # POST /execute sandbox
+└── infra/test/            # node:test unit tests
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🔒 Security Notes
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/vaibhav45sktech/aivoicemode.git
-cd aivoicemode
-
-# 2. Install dependencies
-npm install
-
-# 3. Add your API key
-echo "API_KEY=your_gemini_api_key" > .env
-
-# 4. Start development server
-npm run dev
-
-# 5. Open in browser
-# → http://localhost:5173
-```
-
----
-
-## 📸 Screenshots
-
-| Dashboard | Learning View |
-|-----------|---------------|
-| Real-time stats, stopwatch timer, daily quests | Voice AI tutor, live code editor |
+- ElevenLabs API key and voice id live only in Lambda environment variables.
+- Bedrock access uses the Lambda IAM role; no AWS keys in code.
+- IAM grants only `bedrock:InvokeModel` on the specific model ARN.
+- Errors are returned as generic codes; upstream details and secrets are redacted in logs.
 
 ---
 
 ## 📄 License
 
-MIT License - feel free to use this for learning and building!
-
----
-
-<div align="center">
-
-**Built with ❤️ using React, Gemini AI, and Firebase**
-
-[⭐ Star this repo](https://github.com/vaibhav45sktech/aivoicemode) if you find it helpful!
-
-</div>
+MIT License.

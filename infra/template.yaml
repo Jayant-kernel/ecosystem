@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  VoiceCode voice backend — custom pipeline:
+  microphone -> ElevenLabs STT -> Amazon Bedrock (Claude 3 Haiku)
+  -> ElevenLabs TTS -> speaker. No ElevenLabs Conversational AI Agent.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures: [arm64]
+    MemorySize: 512
+    Timeout: 29
+    Environment:
+      Variables:
+        ALLOWED_ORIGIN: !Ref AllowedOrigin
+
+Parameters:
+  ElevenLabsApiKey:
+    Type: String
+    NoEcho: true
+    Description: ElevenLabs API key (xi-api-key). Server-side only; never sent to the client.
+  ElevenLabsVoiceId:
+    Type: String
+    Description: ElevenLabs voice id used for TTS (no agent required).
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-haiku-20240307-v1:0
+    Description: Bedrock model id used as the tutor brain.
+  BedrockRegion:
+    Type: String
+    Default: ap-south-1
+    Description: AWS region that serves the Bedrock model.
+  SttModelId:
+    Type: String
+    Default: scribe_v2
+    Description: ElevenLabs speech-to-text model id.
+  TtsModelId:
+    Type: String
+    Default: eleven_flash_v2_5
+    Description: ElevenLabs text-to-speech model id (low latency).
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+    Description: CORS origin for browser access (set to your Amplify URL in production).
+
+Resources:
+
+  # ---- API Gateway for browser-facing endpoints (/voice, /session, /execute) ----
+  BackendApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      BinaryMediaTypes:
+        - multipart/form-data
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+
+  # ---- Voice pipeline: POST /voice (STT -> Bedrock -> TTS), GET /session ----
+  LlmBridgeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/llm-bridge/
+      Handler: index.handler
+      MemorySize: 1024
+      Timeout: 29
+      Environment:
+        Variables:
+          ELEVENLABS_API_KEY: !Ref ElevenLabsApiKey
+          ELEVENLABS_VOICE_ID: !Ref ElevenLabsVoiceId
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_REGION: !Ref BedrockRegion
+          STT_MODEL_ID: !Ref SttModelId
+          TTS_MODEL_ID: !Ref TtsModelId
+          SESSION_TTL_MS: '1800000'
+          ALLOWED_ORIGIN: !Ref AllowedOrigin
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub 'arn:aws:bedrock:${BedrockRegion}::foundation-model/${BedrockModelId}'
+      Events:
+        Voice:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BackendApi
+            Path: /voice
+            Method: POST
+        Session:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BackendApi
+            Path: /session
+            Method: GET
+
+  # ---- Server-side code execution sandbox (POST /execute) ----
+  ExecuteCodeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/execute-code/
+      Handler: index.handler
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          EXEC_TIMEOUT_MS: '2000'
+      Events:
+        PostExecute:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BackendApi
+            Path: /execute
+            Method: POST
+
+Outputs:
+  ApiBaseUrl:
+    Description: Set this as VITE_API_BASE_URL for the frontend build.
+    Value: !Sub 'https://${BackendApi}.execute-api.${AWS::Region}.amazonaws.com/prod'

@@ -20,6 +20,11 @@ dist-ssr
 # Local dev artifacts
 dev-server.log
 
+# AWS SAM
+.aws-sam/
+infra/**/node_modules/
+infra/.aws-sam/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

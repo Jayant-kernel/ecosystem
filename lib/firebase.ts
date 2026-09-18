@@ -13,13 +13,14 @@ const { initializeApp, getApps, getApp } = firebaseApp as any;
 // Your web app's Firebase configuration
 // Use (import.meta as any).env to avoid TypeScript errors if Vite types aren't strictly loaded.
 const firebaseConfig = {
-    apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || "AIzaSyDdEk0fQ0JqUilEFKYQk4OczhkhpqNFwNw",
-    authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || "voicecode-ai-c143f.firebaseapp.com",
-    projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || "voicecode-ai-c143f",
-    storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || "voicecode-ai-c143f.firebasestorage.app",
-    messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "242245066171",
-    appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || "1:242245066171:web:085e1e765eaa06baa0389e",
-    measurementId: (import.meta as any).env?.VITE_FIREBASE_MEASUREMENT_ID || "G-K994KG7TQT"
+    apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || "AIzaSyAvm8zqNl0FiEPxGrybLzrJCTxKvuQPi7M",
+    authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || "swasth-setu-39630.firebaseapp.com",
+    databaseURL: (import.meta as any).env?.VITE_FIREBASE_DATABASE_URL || "https://swasth-setu-39630-default-rtdb.firebaseio.com",
+    projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || "swasth-setu-39630",
+    storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || "swasth-setu-39630.firebasestorage.app",
+    messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "544366084422",
+    appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || "1:544366084422:web:a36ab4a527776f210be547",
+    measurementId: (import.meta as any).env?.VITE_FIREBASE_MEASUREMENT_ID || "G-PKKF93P2BE"
 };
 
 // Initialize Firebase singleton.
