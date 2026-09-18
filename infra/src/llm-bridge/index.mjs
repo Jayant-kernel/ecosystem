@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { speechToText, textToSpeech } from './elevenlabs.mjs';
-import { createBedrockClient } from './bedrock.mjs';
-import { runTutor } from './tutor.mjs';
+import { createProvider, generateTutorResponse } from './tutor.mjs';
 import { parseRequestBody, header } from './request.mjs';
 import { AppError, BadRequestError, redact } from './errors.mjs';
 
@@ -74,20 +73,17 @@ function routeOf(event) {
 export function createHandler(deps = {}) {
   const {
     fetchImpl = fetch,
-    bedrockClient,
+    provider,
     env = process.env,
     logger = console,
     uuid = () => randomUUID(),
   } = deps;
 
-  let client = bedrockClient;
-
-  const getClient = () =>
-    client || (client = createBedrockClient(env.BEDROCK_REGION || 'ap-south-1'));
+  let llmProvider = provider;
+  const getProvider = () => llmProvider || (llmProvider = createProvider(env));
 
   async function handleVoice(event) {
     const origin = env.ALLOWED_ORIGIN || '*';
-    const modelId = env.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0';
     const ttlMs = Number(env.SESSION_TTL_MS || DEFAULT_SESSION_TTL_MS);
 
     const { audio, mimeType, fields } = await parseRequestBody(event, {
@@ -120,9 +116,8 @@ export function createHandler(deps = {}) {
       };
       const history = getSessionHistory(sessionId, ttlMs) || parseClientHistory(fields.history);
 
-      const result = await runTutor({
-        client: getClient(),
-        modelId,
+      const result = await generateTutorResponse({
+        provider: getProvider(),
         transcript,
         history,
         context,

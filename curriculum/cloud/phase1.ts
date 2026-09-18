@@ -402,7 +402,7 @@ console.log('Failure domains tolerated: ' + (deployment.availabilityZones.length
           'Foundation drill. In Lesson 1 you wrote evaluateBudget and learned the hard rule: alerts notify, they never enforce. Now we go one level deeper, into what actually creates the cost.',
           'Why this matters. In the cloud, cost is a design decision. Two architectures that behave identically can differ tenfold in price. If you cannot reason about cost, you will build something that works and cannot ship.',
           'The pricing models. On-demand charges by the second with no commitment. Savings plans and reserved capacity give a large discount in exchange for a one or three year commitment on a steady baseline. Spot pricing is very cheap but the provider may reclaim the capacity with little warning, so only interruptible work belongs there.',
-          'Tags are how you find cost. A tag is a key and value attached to a resource, such as project=voicecode and owner=jayant. Without tags, a bill is one large number and nobody knows which team caused it. With tags, cost becomes attributable and therefore manageable.',
+          'Tags are how you find cost. A tag is a key and value attached to a resource, such as project=ecosystem and owner=jayant. Without tags, a bill is one large number and nobody knows which team caused it. With tags, cost becomes attributable and therefore manageable.',
           'Mental model for serverless cost: a taxi meter. You are billed per request plus the memory your code used, multiplied by how long it ran. A slow function with generous memory is an expensive function, which is why performance tuning is also cost tuning.',
           'Production insight. The reliable cost control stack is: tag everything, set a budget alert at 85 percent actual and 100 percent forecast, review the largest line items monthly, delete unused resources, and treat every lab as reversible. Cost review is part of engineering review, not an accounting afterthought.'
         ],
@@ -461,10 +461,10 @@ console.log('Ways to attribute this cost: 0');`,
             ],
             solution: `// 1) Tag every resource so cost is attributable.
 const resources = [
-  { name: 'api-lambda', tags: { project: 'voicecode', owner: 'jayant', env: 'prod' } },
-  { name: 'old-test-database', tags: { project: 'voicecode', owner: 'jayant', env: 'test' } },
-  { name: 'nat-gateway', tags: { project: 'voicecode', owner: 'jayant', env: 'prod' } },
-  { name: 'logs-bucket', tags: { project: 'voicecode', owner: 'jayant', env: 'prod' } }
+  { name: 'api-lambda', tags: { project: 'ecosystem', owner: 'jayant', env: 'prod' } },
+  { name: 'old-test-database', tags: { project: 'ecosystem', owner: 'jayant', env: 'test' } },
+  { name: 'nat-gateway', tags: { project: 'ecosystem', owner: 'jayant', env: 'prod' } },
+  { name: 'logs-bucket', tags: { project: 'ecosystem', owner: 'jayant', env: 'prod' } }
 ];
 // 2) Budget alert at 85% actual and 100% forecast.
 // 3) Teardown checklist per lab: identify leftovers like the test database.

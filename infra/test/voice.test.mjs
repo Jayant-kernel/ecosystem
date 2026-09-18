@@ -5,6 +5,9 @@ import { createHandler, resetSessions } from '../src/llm-bridge/index.mjs';
 const ENV = {
   ELEVENLABS_API_KEY: 'sk_test',
   ELEVENLABS_VOICE_ID: 'voice-123',
+  LLM_PROVIDER: 'gemini',
+  GEMINI_API_KEY: 'test-key',
+  GEMINI_MODEL_ID: 'gemini-2.5-flash',
   BEDROCK_MODEL_ID: 'anthropic.claude-3-haiku-20240307-v1:0',
   BEDROCK_REGION: 'ap-south-1',
   ALLOWED_ORIGIN: '*',
@@ -61,12 +64,13 @@ function sttFetch(text) {
   };
 }
 
-function fakeBedrock(text = 'A closure captures its surrounding scope.') {
+function fakeProvider(text = 'A closure captures its surrounding scope.') {
   return {
+    name: 'fake',
     calls: [],
-    async send(command) {
-      this.calls.push(command.input);
-      return { output: { message: { content: [{ text }] } }, stopReason: 'end_turn' };
+    async generateTutorResponse(request) {
+      this.calls.push(request);
+      return { text, toolCalls: [] };
     },
   };
 }
@@ -74,10 +78,10 @@ function fakeBedrock(text = 'A closure captures its surrounding scope.') {
 test.beforeEach(() => resetSessions());
 
 test('full pipeline: audio in -> transcript + response + audio out', async () => {
-  const bedrockClient = fakeBedrock();
+  const provider = fakeProvider();
   const handler = createHandler({
     fetchImpl: sttFetch('What is a closure?'),
-    bedrockClient,
+    provider,
     env: ENV,
     logger: silentLogger,
   });
@@ -92,12 +96,14 @@ test('full pipeline: audio in -> transcript + response + audio out', async () =>
   assert.equal(body.audioMimeType, 'audio/mpeg');
   assert.equal(body.sessionId, 's1');
   assert.deepEqual(body.toolCalls, []);
+  assert.equal(provider.calls.length, 1);
+  assert.equal(provider.calls[0].transcript, 'What is a closure?');
 });
 
 test('accepts multipart/form-data uploads', async () => {
   const handler = createHandler({
     fetchImpl: sttFetch('hello from multipart'),
-    bedrockClient: fakeBedrock('hi!'),
+    provider: fakeProvider('hi!'),
     env: ENV,
     logger: silentLogger,
   });
@@ -108,11 +114,11 @@ test('accepts multipart/form-data uploads', async () => {
   assert.equal(body.transcript, 'hello from multipart');
 });
 
-test('empty transcript short-circuits before Bedrock', async () => {
-  const bedrockClient = fakeBedrock();
+test('empty transcript short-circuits before the LLM', async () => {
+  const provider = fakeProvider();
   const handler = createHandler({
     fetchImpl: sttFetch(''),
-    bedrockClient,
+    provider,
     env: ENV,
     logger: silentLogger,
   });
@@ -122,11 +128,11 @@ test('empty transcript short-circuits before Bedrock', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(body.transcript, '');
   assert.match(body.response, /didn't catch that/i);
-  assert.equal(bedrockClient.calls.length, 0);
+  assert.equal(provider.calls.length, 0);
 });
 
 test('missing audio is a 400', async () => {
-  const handler = createHandler({ fetchImpl: sttFetch('x'), bedrockClient: fakeBedrock(), env: ENV, logger: silentLogger });
+  const handler = createHandler({ fetchImpl: sttFetch('x'), provider: fakeProvider(), env: ENV, logger: silentLogger });
   const res = await handler(jsonEvent({ sessionId: 's' }));
   assert.equal(res.statusCode, 400);
   assert.equal(JSON.parse(res.body).error.code, 'bad_request');
@@ -139,7 +145,7 @@ test('STT upstream failure maps to 502 without leaking detail', async () => {
     }
     return { ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(1), headers: { get: () => 'audio/mpeg' } };
   };
-  const handler = createHandler({ fetchImpl, bedrockClient: fakeBedrock(), env: ENV, logger: silentLogger });
+  const handler = createHandler({ fetchImpl, provider: fakeProvider(), env: ENV, logger: silentLogger });
 
   const res = await handler(jsonEvent({ audio: Buffer.from('a').toString('base64') }));
   assert.equal(res.statusCode, 502);
@@ -149,7 +155,7 @@ test('STT upstream failure maps to 502 without leaking detail', async () => {
 test('missing voice id is a config error surfaced as 500', async () => {
   const handler = createHandler({
     fetchImpl: sttFetch('hi'),
-    bedrockClient: fakeBedrock(),
+    provider: fakeProvider(),
     env: { ...ENV, ELEVENLABS_VOICE_ID: '' },
     logger: silentLogger,
   });
@@ -159,10 +165,10 @@ test('missing voice id is a config error surfaced as 500', async () => {
 });
 
 test('session context is reused across turns', async () => {
-  const bedrockClient = fakeBedrock('ok');
+  const provider = fakeProvider('ok');
   const handler = createHandler({
     fetchImpl: sttFetch('first question'),
-    bedrockClient,
+    provider,
     env: ENV,
     logger: silentLogger,
   });
@@ -170,12 +176,12 @@ test('session context is reused across turns', async () => {
   await handler(jsonEvent({ audio: Buffer.from('a').toString('base64'), sessionId: 'ctx' }));
   await handler(jsonEvent({ audio: Buffer.from('a').toString('base64'), sessionId: 'ctx' }));
 
-  const secondCallMessages = bedrockClient.calls[1].messages;
-  assert.ok(secondCallMessages.some((m) => m.content?.[0]?.text === 'first question'));
+  const secondHistory = provider.calls[1].history;
+  assert.ok(secondHistory.some((turn) => turn.content === 'first question'));
 });
 
 test('GET /session issues an id, unknown routes 404, OPTIONS 204', async () => {
-  const handler = createHandler({ fetchImpl: sttFetch('x'), bedrockClient: fakeBedrock(), env: ENV, logger: silentLogger, uuid: () => 'fixed-id' });
+  const handler = createHandler({ fetchImpl: sttFetch('x'), provider: fakeProvider(), env: ENV, logger: silentLogger, uuid: () => 'fixed-id' });
 
   const session = await handler({ httpMethod: 'GET', path: '/session', headers: {} });
   assert.equal(session.statusCode, 200);

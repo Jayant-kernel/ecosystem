@@ -181,7 +181,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ navigateTo, activeCourseId })
             </div>
             <h2 className="text-4xl md:text-5xl font-bold font-manrope mb-6">More Than Just Code. <br /> A <span className="text-orange-500">Conversation.</span></h2>
             <p className="text-lg text-zinc-400 mb-10 leading-relaxed">
-              Unlike other platforms where you stare at text, VoiceCode allows you to talk through problems. It's like having a senior engineer sitting right next to you, 24/7.
+              Unlike other platforms where you stare at text, Ecosystem allows you to talk through problems. It's like having a senior engineer sitting right next to you, 24/7.
             </p>
             <button onClick={() => navigateTo('dashboard')} className="px-8 py-4 rounded-full border border-white/20 hover:bg-white hover:text-black transition-all font-bold text-sm uppercase tracking-widest">
               Experience the Difference

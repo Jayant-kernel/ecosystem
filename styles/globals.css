@@ -1,7 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
 @import './carousel.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 body {
     font-family: 'Inter', sans-serif;
@@ -231,69 +232,24 @@ body {
 }
 
 /* Progressive Blur CSS */
+/* Progressive Blur Top — single backdrop-filter layer (was 8 stacked layers, a major scroll-jank source). */
 .gradient-blur {
     position: fixed;
     z-index: 5;
     inset: 0 0 auto 0;
     height: 12%;
     pointer-events: none;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 100%);
 }
 
-.gradient-blur>div,
+/* The extra layer divs are no longer needed for the progressive effect. */
+.gradient-blur > div,
 .gradient-blur::before,
 .gradient-blur::after {
-    position: absolute;
-    inset: 0;
-}
-
-.gradient-blur::before {
-    content: "";
-    z-index: 1;
-    backdrop-filter: blur(0.5px);
-    mask: linear-gradient(to top, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 12.5%, rgba(0, 0, 0, 1) 25%, rgba(0, 0, 0, 0) 37.5%);
-}
-
-.gradient-blur>div:nth-of-type(1) {
-    z-index: 2;
-    backdrop-filter: blur(1px);
-    mask: linear-gradient(to top, rgba(0, 0, 0, 0) 12.5%, rgba(0, 0, 0, 1) 25%, rgba(0, 0, 0, 1) 37.5%, rgba(0, 0, 0, 0) 50%);
-}
-
-.gradient-blur>div:nth-of-type(2) {
-    z-index: 3;
-    backdrop-filter: blur(2px);
-    mask: linear-gradient(to top, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 1) 37.5%, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 0) 62.5%);
-}
-
-.gradient-blur>div:nth-of-type(3) {
-    z-index: 4;
-    backdrop-filter: blur(4px);
-    mask: linear-gradient(to top, rgba(0, 0, 0, 0) 37.5%, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 1) 62.5%, rgba(0, 0, 0, 0) 75%);
-}
-
-.gradient-blur>div:nth-of-type(4) {
-    z-index: 5;
-    backdrop-filter: blur(8px);
-    mask: linear-gradient(to top, rgba(0, 0, 0, 0) 50%, rgba(0, 0, 0, 1) 62.5%, rgba(0, 0, 0, 1) 75%, rgba(0, 0, 0, 0) 87.5%);
-}
-
-.gradient-blur>div:nth-of-type(5) {
-    z-index: 6;
-    backdrop-filter: blur(16px);
-    mask: linear-gradient(to top, rgba(0, 0, 0, 0) 62.5%, rgba(0, 0, 0, 1) 75%, rgba(0, 0, 0, 1) 87.5%, rgba(0, 0, 0, 0) 100%);
-}
-
-.gradient-blur>div:nth-of-type(6) {
-    z-index: 7;
-    backdrop-filter: blur(32px);
-    mask: linear-gradient(to top, rgba(0, 0, 0, 0) 75%, rgba(0, 0, 0, 1) 87.5%, rgba(0, 0, 0, 1) 100%);
-}
-
-.gradient-blur::after {
-    content: "";
-    z-index: 8;
-    backdrop-filter: blur(64px);
-    mask: linear-gradient(to top, rgba(0, 0, 0, 0) 87.5%, rgba(0, 0, 0, 1) 100%);
+    display: none;
 }
 
 /* Helper classes */

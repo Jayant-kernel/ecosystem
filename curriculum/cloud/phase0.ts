@@ -31,13 +31,13 @@ export const PHASE_0_MODULE: Module = {
           'Mental model. Think of cloud resources like a rented apartment. The rent runs whether or not you are inside. A budget alert is the neighbour who phones to warn you that the bill looks wrong. It does not turn the lights off for you.',
           'The rule almost everyone gets wrong. A budget alert notifies. It does not stop, delete, block, or throttle anything. AWS Budgets sends an email or an event. The only thing that truly stops spend is deleting or stopping the resource itself.',
           'Teardown before teardown. Before you create any lab resource, decide how you will delete it and who will confirm it is gone. A teardown checklist written in advance takes two minutes and prevents the classic surprise bill.',
-          'Tags are labels you attach to resources, such as project=voicecode and owner=your-name. They let you find everything you created, and later they let you see which project caused which cost.',
+          'Tags are labels you attach to resources, such as project=ecosystem and owner=your-name. They let you find everything you created, and later they let you see which project caused which cost.',
           'Production insight. Real teams control cost with a combination of tagged resources, budget alerts at 85 percent actual and 100 percent forecast, Cost Anomaly Detection, and a culture where every lab defines its delete step up front. Cost is an engineering concern, not an accounting afterthought.'
         ],
         demos: [
           {
             code: `// A monthly budget, like AWS Budgets: a limit plus alerts.
-const budget = { name: 'voicecode-lab', limitUSD: 10 };
+const budget = { name: 'ecosystem-lab', limitUSD: 10 };
 
 // Cost from resources that stayed alive across the week.
 const dailyCosts = [0, 0.12, 0.12, 0.12, 3.4, 0.5, 0.5];
@@ -174,7 +174,7 @@ console.log('Action: remove the lab resource, then confirm it is gone.');
             code: `// A request is just a message: method, URL, headers, body.
 const request = {
   method: 'POST',
-  url: 'https://api.voicecode.ai/progress',
+  url: 'https://api.ecosystem.ai/progress',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({ userId: 'u-1042', percent: 60 })
 };

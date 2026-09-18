@@ -4,7 +4,6 @@ import LandingPage from './components/CourseSelection';
 import DashboardPage from './pages/DashboardPage';
 import LearningView from './components/LearningView';
 import { DEFAULT_COURSE_ID, getCourseById, isCoursePublic } from './constants';
-import PricingPage from './pages/PricingPage';
 import CoursesPage from './pages/CoursesPage';
 import ExplanationsPage from './pages/ExplanationsPage';
 import LoginPage from './pages/LoginPage';
@@ -13,7 +12,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-export type View = 'landing' | 'pricing' | 'courses' | 'dashboard' | 'lesson' | 'explanations' | 'login' | 'signup';
+export type View = 'landing' | 'courses' | 'dashboard' | 'lesson' | 'explanations' | 'login' | 'signup';
 
 /** Navigate to a view, optionally switching the active course first. */
 export type NavigateFn = (view: View, courseId?: string) => void;
@@ -69,8 +68,6 @@ const MainApp: React.FC = () => {
     switch (currentView) {
       case 'landing':
         return <LandingPage navigateTo={navigateTo} />;
-      case 'pricing':
-        return <PricingPage navigateTo={navigateTo} />;
       case 'courses':
         return <CoursesPage navigateTo={navigateTo} activeCourseId={activeCourseId} />;
       case 'dashboard':

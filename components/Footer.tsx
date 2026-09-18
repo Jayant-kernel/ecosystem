@@ -12,7 +12,7 @@ const Footer: React.FC = () => {
                                 <i className="fas fa-headset text-orange-500 text-xl"></i>
                             </div>
                         </div>
-                        <h3 className="text-5xl font-medium text-white tracking-tighter font-manrope mb-4">Voice<span className="text-zinc-600">Code</span></h3>
+                        <h3 className="text-5xl font-medium text-white tracking-tighter font-manrope mb-4">Eco<span className="text-zinc-600">system</span></h3>
                         <p className="text-zinc-500 text-sm font-sans max-w-xs">
                             The conversational coding companion for the next generation of developers.
                         </p>
@@ -25,7 +25,6 @@ const Footer: React.FC = () => {
                                 <h4 className="text-base font-medium text-white font-manrope">Product</h4>
                                 <div className="flex flex-col gap-4">
                                     <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm font-sans">Features</a>
-                                    <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm font-sans">Pricing</a>
                                     <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm font-sans">Integrations</a>
                                     <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm font-sans">Changelog</a>
                                 </div>
@@ -68,7 +67,7 @@ const Footer: React.FC = () => {
 
                 {/* Bottom Bar */}
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <p className="text-xs text-zinc-500 font-sans">Copyright © 2024 VoiceCode AI</p>
+                    <p className="text-xs text-zinc-500 font-sans">Copyright © 2024 Ecosystem</p>
 
                     <div className="flex items-center gap-10">
                         <a href="#" className="text-xs text-zinc-500 hover:text-white transition-colors font-sans">Privacy Policy</a>

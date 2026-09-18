@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  VoiceCode voice backend — custom pipeline:
+  Ecosystem voice backend — custom pipeline:
   microphone -> ElevenLabs STT -> Amazon Bedrock (Claude 3 Haiku)
   -> ElevenLabs TTS -> speaker. No ElevenLabs Conversational AI Agent.
 
@@ -23,10 +23,25 @@ Parameters:
   ElevenLabsVoiceId:
     Type: String
     Description: ElevenLabs voice id used for TTS (no agent required).
+  GeminiApiKey:
+    Type: String
+    NoEcho: true
+    Description: Gemini API key. Used only inside the Lambda (temporary LLM). Never sent to the browser.
+  GeminiModelId:
+    Type: String
+    Default: gemini-2.5-flash
+    Description: Gemini model id used as the temporary tutor brain.
+  LlmProvider:
+    Type: String
+    Default: gemini
+    AllowedValues:
+      - gemini
+      - bedrock
+    Description: Which LLM provider the tutor uses. Switch back with 'bedrock' once model access is granted.
   BedrockModelId:
     Type: String
     Default: anthropic.claude-3-haiku-20240307-v1:0
-    Description: Bedrock model id used as the tutor brain.
+    Description: Bedrock model id used when LlmProvider=bedrock.
   BedrockRegion:
     Type: String
     Default: ap-south-1
@@ -70,6 +85,9 @@ Resources:
         Variables:
           ELEVENLABS_API_KEY: !Ref ElevenLabsApiKey
           ELEVENLABS_VOICE_ID: !Ref ElevenLabsVoiceId
+          LLM_PROVIDER: !Ref LlmProvider
+          GEMINI_API_KEY: !Ref GeminiApiKey
+          GEMINI_MODEL_ID: !Ref GeminiModelId
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           BEDROCK_REGION: !Ref BedrockRegion
           STT_MODEL_ID: !Ref SttModelId

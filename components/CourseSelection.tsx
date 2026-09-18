@@ -12,34 +12,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
         if ((window as any).initInViewAnimations) {
             (window as any).initInViewAnimations();
         }
-
-        // Initialize Unicorn Studio for 3D Background
-        if ((window as any).UnicornStudio) {
-            (window as any).UnicornStudio.init();
-        } else {
-            // Fallback if script hasn't loaded yet (though it should be in head/body)
-            const checkUnicorn = setInterval(() => {
-                if ((window as any).UnicornStudio) {
-                    (window as any).UnicornStudio.init();
-                    clearInterval(checkUnicorn);
-                }
-            }, 100);
-            setTimeout(() => clearInterval(checkUnicorn), 5000);
-        }
     }, []);
 
     return (
         <div className="min-h-screen bg-background relative overflow-x-hidden">
-
-            {/* Background Component */}
-            <div className="aura-background-component fixed top-0 w-full h-screen mix-blend-screen brightness-50 opacity-50 saturate-0 z-10 pointer-events-none"
-                data-alpha-mask="80"
-                style={{ maskImage: 'linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)', WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)' }}>
-                <div className="aura-background-component top-0 w-full -z-10 absolute h-full">
-                    {/* Unicorn Studio Project */}
-                    <div data-us-project="bKN5upvoulAmWvInmHza" className="absolute w-full h-full left-0 top-0 -z-10"></div>
-                </div>
-            </div>
 
             {/* Progressive Blur Top */}
             <div className="gradient-blur">
@@ -213,7 +189,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                         Coding at the speed of <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">sound.</span>
                     </h2>
                     <p className="text-xl text-zinc-400 font-sans max-w-2xl leading-relaxed">
-                        VoiceCode transforms your spoken intent into syntactically correct code, managing boilerplate and logic so you can focus on architecture.
+                        Ecosystem transforms your spoken intent into syntactically correct code, managing boilerplate and logic so you can focus on architecture.
                     </p>
                 </div>
 
@@ -281,7 +257,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                                     <div className="w-3 h-3 rounded-full bg-green-500/20"></div>
                                 </div>
                                 <div className="space-y-2">
-                                    <p><span className="text-purple-400">const</span> <span className="text-blue-400">greeting</span> = <span className="text-orange-400">"Hello, VoiceCode!"</span>;</p>
+                                    <p><span className="text-purple-400">const</span> <span className="text-blue-400">greeting</span> = <span className="text-orange-400">"Hello, Ecosystem!"</span>;</p>
                                     <p><span className="text-purple-400">function</span> <span className="text-blue-400">speak</span>() {'{'}</p>
                                     <p className="pl-4"><span className="text-zinc-500">// Just say it...</span></p>
                                     <p className="pl-4">console.<span className="text-yellow-400">log</span>(greeting);</p>
@@ -357,7 +333,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                                     </button>
                                     <div className="flex items-center gap-2">
                                         <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse"></div>
-                                        <span className="text-sm font-semibold text-white tracking-wide">VoiceCode AI</span>
+                                        <span className="text-sm font-semibold text-white tracking-wide">Ecosystem</span>
                                     </div>
                                     <button className="flex hover:bg-white/10 transition-colors text-white/70 bg-white/5 w-8 h-8 rounded-full items-center justify-center border border-white/5">
                                         <i className="fas fa-ellipsis-h text-xs"></i>
@@ -542,7 +518,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-zinc-200 to-zinc-500"> delivered</span>
                     </h2>
                     <p className="text-xl text-gray-400 font-sans max-w-2xl leading-relaxed">
-                        See how developers are mastering code faster with VoiceCode's conversational intelligence.
+                        See how developers are mastering code faster with Ecosystem's conversational intelligence.
                     </p>
                 </div>
 
@@ -567,7 +543,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                                 <i className="fas fa-quote-left text-3xl text-zinc-700 mb-4"></i>
 
                                 <blockquote className="text-base text-gray-300 font-sans leading-relaxed mb-8">
-                                    "I thought voice coding was a gimmick until I tried VoiceCode. The latency is practically non-existent. It feels like the AI is reading my mind before I finish speaking."
+                                    "I thought voice coding was a gimmick until I tried Ecosystem. The latency is practically non-existent. It feels like the AI is reading my mind before I finish speaking."
                                 </blockquote>
 
                                 <div className="flex items-center justify-between">
@@ -616,7 +592,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                                 <div className="relative z-10">
                                     <i className="fas fa-star text-3xl text-zinc-400 mb-4"></i>
                                     <p className="text-sm text-zinc-800 font-medium font-sans leading-relaxed mb-6">
-                                        "VoiceCode's context awareness is unreal. It knows exactly which file I'm referencing without me explaining it."
+                                        "Ecosystem's context awareness is unreal. It knows exactly which file I'm referencing without me explaining it."
                                     </p>
                                 </div>
                                 <div className="relative z-10 flex items-center justify-between mt-auto pt-4 border-t border-zinc-300">
@@ -657,7 +633,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                                 <i className="fas fa-quote-left text-4xl text-zinc-700 mb-6"></i>
 
                                 <blockquote className="text-lg text-gray-300 font-sans leading-relaxed mb-8">
-                                    "I refactored my entire legacy codebase in a weekend using VoiceCode. Describing the changes verbally is infinitely faster than typing them out manually."
+                                    "I refactored my entire legacy codebase in a weekend using Ecosystem. Describing the changes verbally is infinitely faster than typing them out manually."
                                 </blockquote>
                             </div>
 
@@ -729,7 +705,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                                 <i className="fas fa-quote-left text-4xl text-zinc-700 mb-6"></i>
 
                                 <blockquote className="text-lg text-gray-300 font-sans leading-relaxed mb-8">
-                                    "VoiceCode isn't just a tool; it's a health-saver. I can code for 8 hours without touching the keyboard. My wrist pain is completely gone."
+                                    "Ecosystem isn't just a tool; it's a health-saver. I can code for 8 hours without touching the keyboard. My wrist pain is completely gone."
                                 </blockquote>
                             </div>
 
@@ -762,7 +738,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ navigateTo }) => {
                             Ready to find your <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">voice?</span>
                         </h2>
                         <p className="text-lg text-zinc-400 font-sans leading-relaxed max-w-md">
-                            Join the VoiceCode revolution. Whether you're a seasoned pro looking to speed up, or a beginner starting your journey, we have a plan for you.
+                            Join the Ecosystem revolution. Whether you're a seasoned pro looking to speed up, or a beginner starting your journey, we have a plan for you.
                         </p>
                     </div>
 

@@ -678,7 +678,7 @@ console.log(handler({ body: '{"percent":"sixty"}' }).statusCode);`,
 const client = new Object({
   credentials: { accessKeyId: 'AKIA...', secretAccessKey: 'hardcoded-secret' }
 });
-const bucket = 'voicecode-corpus';
+const bucket = 'ecosystem-corpus';
 console.log('Using hardcoded credentials and a hardcoded name.');`,
             hints: [
               'Where should credentials come from in Lambda?',

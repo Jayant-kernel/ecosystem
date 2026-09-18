@@ -1,5 +1,5 @@
 {
-  "name": "VoiceCode.ai",
+  "name": "Ecosystem",
   "description": "An AI-powered programming tutor that teaches you to code through natural conversation. Learn via voice or chat, follow a structured roadmap, and practice with interactive exercises.",
   "requestFramePermissions": [
     "microphone"

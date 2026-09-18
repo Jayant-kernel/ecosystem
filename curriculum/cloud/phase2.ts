@@ -191,14 +191,14 @@ function isAllowed(policy, action, resource) {
 const policy = {
   Version: '2012-10-17',
   Statement: [
-    { Effect: 'Allow', Action: ['s3:GetObject', 's3:PutObject'], Resource: 'arn:aws:s3:::voicecode-corpus/*' },
+    { Effect: 'Allow', Action: ['s3:GetObject', 's3:PutObject'], Resource: 'arn:aws:s3:::ecosystem-corpus/*' },
     { Effect: 'Deny',  Action: 's3:DeleteObject',              Resource: '*' }
   ]
 };
 
-console.log('Read?   ' + isAllowed(policy, 's3:GetObject', 'arn:aws:s3:::voicecode-corpus/welcome.md'));
-console.log('Write?  ' + isAllowed(policy, 's3:PutObject', 'arn:aws:s3:::voicecode-corpus/a.md'));
-console.log('Delete? ' + isAllowed(policy, 's3:DeleteObject', 'arn:aws:s3:::voicecode-corpus/a.md'));
+console.log('Read?   ' + isAllowed(policy, 's3:GetObject', 'arn:aws:s3:::ecosystem-corpus/welcome.md'));
+console.log('Write?  ' + isAllowed(policy, 's3:PutObject', 'arn:aws:s3:::ecosystem-corpus/a.md'));
+console.log('Delete? ' + isAllowed(policy, 's3:DeleteObject', 'arn:aws:s3:::ecosystem-corpus/a.md'));
 console.log('Other?  ' + isAllowed(policy, 's3:GetObject', 'arn:aws:s3:::someone-else/x'));
 console.log('Default is deny. Deny beats Allow, always.');`,
             explainByLine: true

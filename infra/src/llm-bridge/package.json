@@ -1,10 +1,11 @@
 {
-  "name": "voicecode-voice-pipeline",
+  "name": "ecosystem-voice-pipeline",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.700.0",
+    "@google/genai": "1.33.0",
     "busboy": "^1.6.0"
   }
 }
