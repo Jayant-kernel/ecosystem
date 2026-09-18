@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View } from '../App';
-import { JAVASCRIPT_COURSE } from '../constants';
+import { NavigateFn } from '../App';
+import { Course } from '../types';
 import { useCourseProgress } from '../hooks/useCourseProgress';
 import { useUserStats, formatTimeSpent } from '../hooks/useUserStats';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,18 +10,24 @@ import CourseDetailsModal from '../components/CourseDetailsModal';
 import CertificateModal from '../components/CertificateModal';
 
 interface DashboardPageProps {
-  navigateTo: (view: View) => void;
+  navigateTo: NavigateFn;
+  activeCourse: Course;
 }
 
-const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
+const COURSE_ICONS: Record<string, string> = {
+  'javascript-complete': 'fab fa-js text-yellow-400',
+  'cloud-big-data-engineering': 'fas fa-cloud text-sky-400'
+};
+
+const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo, activeCourse }) => {
   const { user } = useAuth();
-  const { progress } = useCourseProgress(JAVASCRIPT_COURSE.id);
+  const { progress } = useCourseProgress(activeCourse.id);
   const [showDetails, setShowDetails] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
   const [showAddQuest, setShowAddQuest] = useState(false);
   const [newQuestTitle, setNewQuestTitle] = useState('');
 
-  const totalLessons = JAVASCRIPT_COURSE.modules.reduce((acc, module) => acc + module.lessons.length, 0);
+  const totalLessons = activeCourse.modules.reduce((acc, module) => acc + module.lessons.length, 0);
   const completedLessonsCount = progress.completedLessons.length;
   const progressPercentage = totalLessons > 0 ? (completedLessonsCount / totalLessons) * 100 : 0;
 
@@ -132,7 +138,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
                 <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start md:items-center">
                   {/* Icon/Thumbnail */}
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-zinc-800/80 border border-white/5 flex items-center justify-center flex-shrink-0 shadow-xl group-hover:scale-105 transition-transform duration-500">
-                    <i className="fab fa-js text-5xl text-yellow-400"></i>
+                    <i className={`${COURSE_ICONS[activeCourse.id] ?? 'fas fa-graduation-cap text-orange-400'} text-5xl`}></i>
                   </div>
 
                   {/* Content */}
@@ -140,10 +146,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                       <div>
                         <div className="flex items-center gap-3 mb-1">
-                          <h3 className="text-2xl font-bold text-white font-manrope">{JAVASCRIPT_COURSE.title}</h3>
-                          <span className="bg-zinc-800 border border-white/10 text-xs font-bold px-2 py-0.5 rounded text-gray-400">BEGINNER</span>
+                          <h3 className="text-2xl font-bold text-white font-manrope">{activeCourse.title}</h3>
+                          <span className="bg-zinc-800 border border-white/10 text-xs font-bold px-2 py-0.5 rounded text-gray-400 uppercase">{activeCourse.level || 'Course'}</span>
                         </div>
-                        <p className="text-zinc-500 text-sm">Master the language of the web.</p>
+                        <p className="text-zinc-500 text-sm">{activeCourse.description}</p>
                       </div>
                       <div className="text-right hidden md:block">
                         <p className="text-3xl font-bold text-white font-manrope">{Math.round(progressPercentage)}%</p>
@@ -163,7 +169,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-4">
-                      <button onClick={() => navigateTo('lesson')} className="bg-white text-black hover:bg-orange-500 hover:text-white transition-colors px-6 py-3 rounded-xl font-bold text-sm tracking-wide flex items-center gap-2 group/btn">
+                      <button onClick={() => navigateTo('lesson', activeCourse.id)} className="bg-white text-black hover:bg-orange-500 hover:text-white transition-colors px-6 py-3 rounded-xl font-bold text-sm tracking-wide flex items-center gap-2 group/btn">
                         {progressPercentage > 0 ? 'Continue Lesson' : 'Start Course'}
                         <i className="fas fa-arrow-right transform group-hover/btn:translate-x-1 transition-transform"></i>
                       </button>
@@ -198,7 +204,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
                 <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
                   Your AI tutor is ready to help you debug and understand complex concepts instantly.
                 </p>
-                <button onClick={() => navigateTo('lesson')} className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm transition-colors shadow-lg shadow-purple-600/20">
+                <button onClick={() => navigateTo('lesson', activeCourse.id)} className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm transition-colors shadow-lg shadow-purple-600/20">
                   Ask AI Tutor
                 </button>
               </div>
@@ -211,17 +217,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ navigateTo }) => {
       <CourseDetailsModal
         isOpen={showDetails}
         onClose={() => setShowDetails(false)}
-        course={{ ...JAVASCRIPT_COURSE, totalDuration: '4 Weeks' }} // Augment with duration as per typical display
+        course={activeCourse}
         onStartCourse={() => {
           setShowDetails(false);
-          navigateTo('lesson');
+          navigateTo('lesson', activeCourse.id);
         }}
       />
 
       <CertificateModal
         isOpen={showCertificate}
         onClose={() => setShowCertificate(false)}
-        courseName="JavaScript Mastery"
+        courseName={activeCourse.title}
       />
 
       {/* Add Quest Modal */}

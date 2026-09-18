@@ -8,6 +8,10 @@ import { decode, decodeAudioData } from '../utils/audio';
 const INPUT_SAMPLE_RATE = 16000;
 const OUTPUT_SAMPLE_RATE = 24000;
 const MAX_RETRIES = 3;
+// Streaming chunks arrive many times per second. Instead of re-rendering the
+// whole learning view on every chunk, we buffer transcript updates and flush
+// them on this interval (final turns flush immediately).
+const TRANSCRIPT_FLUSH_MS = 150;
 
 export const useLiveTutor = (
   onStreamMessage: (newTranscript: Transcript) => void,
@@ -34,12 +38,24 @@ export const useLiveTutor = (
   const retryCountRef = useRef(0);
   const stopSignalRef = useRef(false);
 
+  // Transcript buffering: latest value is held here and flushed on a timer.
+  const pendingTranscriptRef = useRef<Transcript | null>(null);
+  const transcriptFlushTimerRef = useRef<number | null>(null);
+
   // Refs for state that must be accessed inside the audio processing closure without staleness
   const isMutedRef = useRef(isMuted);
   const isSpeakingRef = useRef(isSpeaking);
 
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
   useEffect(() => { isSpeakingRef.current = isSpeaking; }, [isSpeaking]);
+
+  // Clear any pending buffered transcript flush on unmount.
+  useEffect(() => () => {
+      if (transcriptFlushTimerRef.current !== null) {
+          clearTimeout(transcriptFlushTimerRef.current);
+          transcriptFlushTimerRef.current = null;
+      }
+  }, []);
 
   // Ref to hold the latest version of onToolCall.
   const onToolCallRef = useRef(onToolCall);
@@ -55,8 +71,10 @@ export const useLiveTutor = (
       }
       const ctx = outputAudioContextRef.current;
       if (ctx.state === 'suspended') await ctx.resume();
-      
-      setIsSpeaking(true);
+
+      if (!isSpeakingRef.current) {
+        setIsSpeaking(true);
+      }
       
       const audioBytes = decode(base64Audio);
       const audioBuffer = await decodeAudioData(audioBytes, ctx, OUTPUT_SAMPLE_RATE, 1);
@@ -81,6 +99,27 @@ export const useLiveTutor = (
     }
   }, []);
   
+  const flushTranscript = useCallback(() => {
+      if (transcriptFlushTimerRef.current !== null) {
+          clearTimeout(transcriptFlushTimerRef.current);
+          transcriptFlushTimerRef.current = null;
+      }
+      const pending = pendingTranscriptRef.current;
+      if (!pending) return;
+      pendingTranscriptRef.current = null;
+      onStreamMessage(pending);
+  }, [onStreamMessage]);
+
+  const scheduleTranscriptFlush = useCallback((immediate: boolean) => {
+      if (immediate) {
+          flushTranscript();
+          return;
+      }
+      // A flush is already queued; the newest value will be picked up by it.
+      if (transcriptFlushTimerRef.current !== null) return;
+      transcriptFlushTimerRef.current = window.setTimeout(flushTranscript, TRANSCRIPT_FLUSH_MS);
+  }, [flushTranscript]);
+
   const processTranscriptionMessage = useCallback((message: LiveServerMessage) => {
       let updated = false;
 
@@ -97,17 +136,29 @@ export const useLiveTutor = (
           transcriptRef.current.ai += message.serverContent.outputTranscription.text || '';
           updated = true;
       }
-       if (message.serverContent?.turnComplete) {
+
+      const turnComplete = !!message.serverContent?.turnComplete;
+      if (turnComplete) {
           transcriptRef.current.isFinal = true;
           updated = true;
       }
 
-      if(updated){
-        onStreamMessage({ ...transcriptRef.current });
+      if (updated) {
+          // Buffer the newest snapshot; flush now on turn completion so the
+          // final answer settles, otherwise flush on the next buffered tick.
+          pendingTranscriptRef.current = { ...transcriptRef.current };
+          scheduleTranscriptFlush(turnComplete);
       }
-  }, [onStreamMessage]);
+  }, [scheduleTranscriptFlush]);
 
   const cleanUpResources = useCallback(() => {
+    // Drop any buffered transcript so a stale flush cannot fire after teardown.
+    if (transcriptFlushTimerRef.current !== null) {
+        clearTimeout(transcriptFlushTimerRef.current);
+        transcriptFlushTimerRef.current = null;
+    }
+    pendingTranscriptRef.current = null;
+
     mediaStreamRef.current?.getTracks().forEach(track => track.stop());
     scriptProcessorRef.current?.disconnect(0);
     if (inputAudioContextRef.current?.state !== 'closed') {

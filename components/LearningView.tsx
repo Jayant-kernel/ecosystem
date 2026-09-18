@@ -92,6 +92,12 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     // Memoize the flattened list of lessons for easier navigation lookup
     const allLessons = useMemo(() => course.modules.flatMap(m => m.lessons), [course]);
 
+    // Stable references so memoized children (Monaco editor, sidebar) do not
+    // re-render when the transcript streams in.
+    const exercises = useMemo(() => currentLesson?.content.exercises ?? [], [currentLesson]);
+    const handleCodeChange = useCallback((val?: string) => setEditorCode(val || ''), []);
+    const handleBackToDashboard = useCallback(() => navigateTo('dashboard'), [navigateTo]);
+
     const [showXPModal, setShowXPModal] = useState(false);
     const [xpGained, setXpGained] = useState(0);
 
@@ -171,18 +177,25 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     }, []);
 
     useEffect(() => {
-        if (progress.currentLessonId) {
-            const lesson = course.modules
-                .flatMap(m => m.lessons)
-                .find(l => l.id === progress.currentLessonId);
-            setCurrentLesson(lesson || null);
-        } else {
-            const firstLesson = course.modules[0]?.lessons[0];
-            if (firstLesson) {
-                updateProgress({ currentLessonId: firstLesson.id });
-            }
+        const firstLesson = allLessons[0];
+        if (!firstLesson) {
+            setCurrentLesson(null);
+            return;
         }
-    }, [progress.currentLessonId, course, updateProgress]);
+
+        const lesson = allLessons.find(l => l.id === progress.currentLessonId);
+        if (lesson) {
+            setCurrentLesson(lesson);
+            return;
+        }
+
+        // The stored lesson id does not belong to this course (e.g. the learner
+        // switched courses). Self-heal by opening this course's first lesson.
+        setCurrentLesson(firstLesson);
+        if (progress.currentLessonId !== firstLesson.id) {
+            updateProgress({ currentLessonId: firstLesson.id });
+        }
+    }, [progress.currentLessonId, allLessons, updateProgress]);
 
     const {
         isSessionActive,
@@ -196,12 +209,12 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         sessionError
     } = useLiveTutor(onStreamMessage, handleToolCall, progress, currentLesson);
 
-    const handleLessonClick = async (lessonId: string) => {
+    const handleLessonClick = useCallback(async (lessonId: string) => {
         await updateProgress({ currentLessonId: lessonId });
         if (window.innerWidth < 768) {
             setIsSidebarOpen(false);
         }
-    };
+    }, [updateProgress]);
 
     return (
         <div className="fixed inset-0 bg-[#0D0D0D] text-gray-200 font-sans flex overflow-hidden selection:bg-orange-500/30 selection:text-orange-200">
@@ -221,7 +234,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                 course={course}
                 completedLessons={progress.completedLessons}
                 currentLessonId={progress.currentLessonId}
-                onBack={() => navigateTo('dashboard')}
+                onBack={handleBackToDashboard}
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}
                 onLessonClick={handleLessonClick}
@@ -255,9 +268,9 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                     <div className="flex-1 md:h-full min-h-0 animate-fade-in-up delay-100">
                         <CodeWorkspace
                             code={editorCode}
-                            onCodeChange={(val) => setEditorCode(val || '')}
+                            onCodeChange={handleCodeChange}
                             output={consoleOutput}
-                            exercises={currentLesson?.content.exercises || []}
+                            exercises={exercises}
                             onRunTests={handleRunTests}
                             onRunCode={handleRunCode}
                             onResetCode={handleResetCode}

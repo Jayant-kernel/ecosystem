@@ -3,12 +3,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { doc, onSnapshot, setDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Progress, CourseProgress } from '../types';
-import { INITIAL_PROGRESS } from '../constants';
+import { getCourseById, getInitialProgress } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 
 export const useCourseProgress = (courseId: string) => {
   const { user, loading: authLoading } = useAuth();
-  const [progress, setProgress] = useState<Progress>(INITIAL_PROGRESS);
+  const course = getCourseById(courseId);
+  const initialProgress = getInitialProgress(course);
+  const [progress, setProgress] = useState<Progress>(initialProgress);
+  // NOTE: progress default is course-aware so each course opens on its own first lesson.
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,11 +41,11 @@ export const useCourseProgress = (courseId: string) => {
             if (localData) {
                 setProgress(JSON.parse(localData));
             } else {
-                setProgress(INITIAL_PROGRESS);
+                setProgress(initialProgress);
             }
         } catch (e) {
             console.error("Local storage error", e);
-            setProgress(INITIAL_PROGRESS);
+            setProgress(initialProgress);
         }
         setLoading(false);
         return;
@@ -58,12 +61,12 @@ export const useCourseProgress = (courseId: string) => {
                 // Map Firestore data model back to app internal Progress model
                 setProgress({
                     completedLessons: data.completedLessonIds || [],
-                    currentLessonId: data.currentLessonId || INITIAL_PROGRESS.currentLessonId,
-                    aiMemory: data.aiMemory || INITIAL_PROGRESS.aiMemory
+                    currentLessonId: data.currentLessonId || initialProgress.currentLessonId,
+                    aiMemory: data.aiMemory || initialProgress.aiMemory
                 });
             } else {
                 // If doc doesn't exist yet for authed user, use defaults (don't auto-create until they do something)
-                setProgress(INITIAL_PROGRESS);
+                setProgress(initialProgress);
             }
             setLoading(false);
             setError(null);

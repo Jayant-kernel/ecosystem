@@ -3,7 +3,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import LandingPage from './components/CourseSelection';
 import DashboardPage from './pages/DashboardPage';
 import LearningView from './components/LearningView';
-import { JAVASCRIPT_COURSE } from './constants';
+import { DEFAULT_COURSE_ID, getCourseById, isCoursePublic } from './constants';
 import PricingPage from './pages/PricingPage';
 import CoursesPage from './pages/CoursesPage';
 import ExplanationsPage from './pages/ExplanationsPage';
@@ -15,27 +15,39 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 export type View = 'landing' | 'pricing' | 'courses' | 'dashboard' | 'lesson' | 'explanations' | 'login' | 'signup';
 
+/** Navigate to a view, optionally switching the active course first. */
+export type NavigateFn = (view: View, courseId?: string) => void;
+
 const MainApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('landing');
+  const [activeCourseId, setActiveCourseId] = useState<string>(DEFAULT_COURSE_ID);
   const { user, loading } = useAuth();
 
-  const navigateTo = useCallback((view: View) => {
-    // Protected routes
+  const activeCourse = getCourseById(activeCourseId);
+
+  const navigateTo = useCallback<NavigateFn>((view, courseId) => {
+    const targetCourseId = courseId ?? activeCourseId;
+    if (courseId) {
+      setActiveCourseId(courseId);
+    }
+    // Protected routes — skipped for public (no-auth) courses.
     const protectedViews: View[] = ['dashboard', 'lesson', 'explanations'];
-    if (protectedViews.includes(view) && !user && !loading) {
+    const bypassAuth = isCoursePublic(targetCourseId);
+    if (protectedViews.includes(view) && !user && !loading && !bypassAuth) {
        setCurrentView('login');
        window.scrollTo(0, 0);
        return;
     }
     setCurrentView(view);
     window.scrollTo(0, 0);
-  }, [user, loading]);
+  }, [user, loading, activeCourseId]);
 
   // Effect to handle initial load redirection if on a protected route
   useEffect(() => {
       if (!loading) {
           const protectedViews: View[] = ['dashboard', 'lesson', 'explanations'];
-          if (protectedViews.includes(currentView) && !user) {
+          const bypassAuth = isCoursePublic(activeCourseId);
+          if (protectedViews.includes(currentView) && !user && !bypassAuth) {
               setCurrentView('login');
           }
           // Redirect from auth pages if already logged in
@@ -43,7 +55,7 @@ const MainApp: React.FC = () => {
               setCurrentView('dashboard');
           }
       }
-  }, [currentView, user, loading]);
+  }, [currentView, user, loading, activeCourseId]);
 
   const renderContent = () => {
     if (loading) {
@@ -60,11 +72,11 @@ const MainApp: React.FC = () => {
       case 'pricing':
         return <PricingPage navigateTo={navigateTo} />;
       case 'courses':
-        return <CoursesPage navigateTo={navigateTo} />;
+        return <CoursesPage navigateTo={navigateTo} activeCourseId={activeCourseId} />;
       case 'dashboard':
-        return <DashboardPage navigateTo={navigateTo} />;
+        return <DashboardPage navigateTo={navigateTo} activeCourse={activeCourse} />;
       case 'lesson':
-        return <LearningView course={JAVASCRIPT_COURSE} navigateTo={navigateTo} />;
+        return <LearningView course={activeCourse} navigateTo={navigateTo} />;
       case 'explanations':
         return <ExplanationsPage navigateTo={navigateTo} />;
       case 'login':

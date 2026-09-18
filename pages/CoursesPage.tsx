@@ -1,53 +1,92 @@
 import React, { useState } from 'react';
-import { View } from '../App';
-import { JAVASCRIPT_COURSE } from '../constants';
+import { NavigateFn } from '../App';
+import { COURSES } from '../constants';
 import CourseDetailsModal from '../components/CourseDetailsModal';
 import { Course } from '../types';
 
 interface CoursesPageProps {
-  navigateTo: (view: View) => void;
+  navigateTo: NavigateFn;
+  activeCourseId: string;
 }
 
-const CoursesPage: React.FC<CoursesPageProps> = ({ navigateTo }) => {
+interface CoursePresentation {
+  icon: string;
+  iconColor: string;
+  bgColor: string;
+  gradient: string;
+}
+
+const COURSE_PRESENTATION: Record<string, CoursePresentation> = {
+  'javascript-complete': {
+    icon: 'JS',
+    iconColor: 'text-yellow-400',
+    bgColor: 'bg-yellow-400/10',
+    gradient: 'from-orange-600 to-orange-400'
+  },
+  'cloud-big-data-engineering': {
+    icon: 'AWS',
+    iconColor: 'text-sky-400',
+    bgColor: 'bg-sky-400/10',
+    gradient: 'from-sky-600 to-cyan-400'
+  },
+  'python-coming-soon': {
+    icon: 'PY',
+    iconColor: 'text-blue-400',
+    bgColor: 'bg-blue-400/10',
+    gradient: 'from-blue-600 to-blue-400'
+  },
+  'go-coming-soon': {
+    icon: 'GO',
+    iconColor: 'text-cyan-400',
+    bgColor: 'bg-cyan-400/10',
+    gradient: 'from-cyan-600 to-cyan-400'
+  }
+};
+
+const DEFAULT_PRESENTATION: CoursePresentation = {
+  icon: 'CO',
+  iconColor: 'text-zinc-300',
+  bgColor: 'bg-zinc-400/10',
+  gradient: 'from-zinc-600 to-zinc-400'
+};
+
+// Courses that are not built yet are shown as placeholders.
+const PLACEHOLDER_COURSES: Course[] = [
+  {
+    id: 'python-coming-soon',
+    title: 'Python for Everybody',
+    description: 'From scripts to data science. Master the world\'s most popular versatile programming language.',
+    level: 'Intermediate',
+    totalDuration: '6 Weeks',
+    modules: []
+  },
+  {
+    id: 'go-coming-soon',
+    title: 'Go: Scalable Systems',
+    description: 'Learn Google\'s high-performance language designed for modern cloud infrastructure and concurrency.',
+    level: 'Advanced',
+    totalDuration: '8 Weeks',
+    modules: []
+  }
+];
+
+const CoursesPage: React.FC<CoursesPageProps> = ({ navigateTo, activeCourseId }) => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
-  // Combine real courses with placeholders for uniform rendering
+  // Combine real (active) courses with placeholders for uniform rendering
   const allCourses = [
-    {
-      ...JAVASCRIPT_COURSE,
-      icon: 'JS',
-      isActive: true,
-      iconColor: 'text-yellow-400',
-      bgColor: 'bg-yellow-400/10',
-      gradient: 'from-orange-600 to-orange-400'
-    },
-    {
-      id: 'python-coming-soon',
-      title: 'Python for Everybody',
-      description: 'From scripts to data science. Master the world\'s most popular versatile programming language.',
-      icon: 'PY',
-      isActive: false,
-      iconColor: 'text-blue-400',
-      bgColor: 'bg-blue-400/10',
-      level: 'Intermediate',
-      totalDuration: '6 Weeks',
-      gradient: 'from-blue-600 to-blue-400',
-      modules: [] // Placeholder
-    },
-    {
-      id: 'go-coming-soon',
-      title: 'Go: Scalable Systems',
-      description: 'Learn Google\'s high-performance language designed for modern cloud infrastructure and concurrency.',
-      icon: 'GO',
-      isActive: false,
-      iconColor: 'text-cyan-400',
-      bgColor: 'bg-cyan-400/10',
-      level: 'Advanced',
-      totalDuration: '8 Weeks',
-      gradient: 'from-cyan-600 to-cyan-400',
-      modules: [] // Placeholder
-    }
+    ...COURSES.map((course) => ({
+      ...course,
+      ...(COURSE_PRESENTATION[course.id] ?? DEFAULT_PRESENTATION),
+      isActive: true
+    })),
+    ...PLACEHOLDER_COURSES.map((course) => ({
+      ...course,
+      ...(COURSE_PRESENTATION[course.id] ?? DEFAULT_PRESENTATION),
+      isActive: false
+    }))
   ];
+
 
   return (
     <div className="pt-24 pb-12 px-4 min-h-screen bg-[#0D0D0D] text-white selection:bg-orange-500/30 selection:text-orange-200">
@@ -110,10 +149,10 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ navigateTo }) => {
                 {course.isActive ? (
                   <div className="space-y-3 relative z-10">
                     <button
-                      onClick={() => navigateTo('dashboard')}
+                      onClick={() => navigateTo('dashboard', course.id)}
                       className="w-full py-3.5 rounded-xl font-bold text-sm tracking-wide bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg hover:shadow-orange-500/25 transform hover:scale-[1.02] transition-all flex items-center justify-center group/btn"
                     >
-                      Start Learning Now
+                      {activeCourseId === course.id ? 'Continue Learning' : 'Start Learning Now'}
                       <i className="fas fa-arrow-right ml-2 group-hover/btn:translate-x-1 transition-transform"></i>
                     </button>
                     <button
@@ -157,7 +196,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ navigateTo }) => {
           isOpen={!!selectedCourse}
           onClose={() => setSelectedCourse(null)}
           course={selectedCourse}
-          onStartCourse={() => navigateTo('dashboard')}
+          onStartCourse={() => navigateTo('lesson', selectedCourse.id)}
         />
       )}
     </div>

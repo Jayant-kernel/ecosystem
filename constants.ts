@@ -1,6 +1,7 @@
 
-import { Course, RawCurriculumDatabase } from './types';
+import { Course, Progress, RawCurriculumDatabase } from './types';
 import { rawCurriculumData } from './javascriptCurriculum';
+import { CLOUD_BIG_DATA_COURSE } from './cloudBigDataCurriculum';
 
 // Cast and map the raw JSON to our internal Course interface if necessary
 const rawDb = rawCurriculumData as RawCurriculumDatabase;
@@ -28,9 +29,32 @@ export const JAVASCRIPT_COURSE: Course = {
   modules: rawDb.course.modules.slice(0, 3)
 };
 
-export const INITIAL_PROGRESS = {
+// Re-export the Cloud & Big Data Engineering course so the rest of the app
+// can treat every course uniformly.
+export { CLOUD_BIG_DATA_COURSE };
+
+export const COURSES: Course[] = [JAVASCRIPT_COURSE, CLOUD_BIG_DATA_COURSE];
+
+export const DEFAULT_COURSE_ID = JAVASCRIPT_COURSE.id;
+
+export const getCourseById = (courseId: string | undefined): Course =>
+  COURSES.find((course) => course.id === courseId) ?? JAVASCRIPT_COURSE;
+
+/**
+ * Courses that can be opened without signing in.
+ * Every course is currently public so guests/judges can try the platform immediately.
+ */
+export const PUBLIC_COURSE_IDS: string[] = COURSES.map((course) => course.id);
+
+export const isCoursePublic = (courseId: string | undefined): boolean =>
+  !!courseId && PUBLIC_COURSE_IDS.includes(courseId);
+
+
+export const getInitialProgress = (course: Course): Progress => ({
   completedLessons: [],
-  // Default to the first lesson of the first module
-  currentLessonId: JAVASCRIPT_COURSE.modules[0]?.lessons[0]?.id || 'js-vars-101',
+  // Default to the first lesson of the first module for THIS course
+  currentLessonId: course.modules[0]?.lessons[0]?.id ?? '',
   aiMemory: ['User is a complete beginner.'],
-};
+});
+
+export const INITIAL_PROGRESS: Progress = getInitialProgress(JAVASCRIPT_COURSE);

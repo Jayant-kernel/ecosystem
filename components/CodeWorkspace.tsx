@@ -89,4 +89,6 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     );
 };
 
-export default CodeWorkspace;
+// Memoized: the editor is expensive (Monaco) and must not re-render when
+// unrelated state such as the live transcript changes.
+export default React.memo(CodeWorkspace);

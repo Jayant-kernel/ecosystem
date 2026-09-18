@@ -67,4 +67,5 @@ const RoadmapSidebar: React.FC<RoadmapSidebarProps> = ({ course, completedLesson
   );
 };
 
-export default RoadmapSidebar;
+// Memoized so it does not re-render while the AI tutor streams a response.
+export default React.memo(RoadmapSidebar);
