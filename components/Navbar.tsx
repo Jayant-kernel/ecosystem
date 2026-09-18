@@ -40,7 +40,6 @@ const Navbar: React.FC<NavbarProps> = ({ navigateTo, currentView }) => {
                 <div className="hidden md:flex items-center gap-6">
                     <button onClick={() => handleNavigation('landing')} className={`text-xs font-medium transition-colors font-sans ${currentView === 'landing' ? 'text-white' : 'text-gray-400 hover:text-white'}`}>Product</button>
                     <button onClick={() => handleNavigation('courses')} className={`text-xs font-medium transition-colors font-sans ${currentView === 'courses' ? 'text-white' : 'text-gray-400 hover:text-white'}`}>Courses</button>
-                    <button onClick={() => handleNavigation('pricing')} className={`text-xs font-medium transition-colors font-sans ${currentView === 'pricing' ? 'text-white' : 'text-gray-400 hover:text-white'}`}>Pricing</button>
                     {user && (
                         <button onClick={() => handleNavigation('dashboard')} className={`text-xs font-medium transition-colors font-sans ${currentView === 'dashboard' ? 'text-white' : 'text-gray-400 hover:text-white'}`}>Dashboard</button>
                     )}

@@ -25,7 +25,6 @@ const Footer: React.FC = () => {
                                 <h4 className="text-base font-medium text-white font-manrope">Product</h4>
                                 <div className="flex flex-col gap-4">
                                     <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm font-sans">Features</a>
-                                    <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm font-sans">Pricing</a>
                                     <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm font-sans">Integrations</a>
                                     <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm font-sans">Changelog</a>
                                 </div>
