@@ -1,4 +1,4 @@
-# 🎙️ VoiceCode.ai - AI-Powered Voice Coding Tutor
+# 🎙️ EcoCode.ai - AI-Powered  Coding Tutor Ecosystem
 
 <div align="center">
 
