@@ -11,6 +11,7 @@ import SignupPage from './pages/SignupPage';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 export type View = 'landing' | 'courses' | 'dashboard' | 'lesson' | 'explanations' | 'login' | 'signup';
 
@@ -101,9 +102,11 @@ const MainApp: React.FC = () => {
 
 const App: React.FC = () => {
     return (
-        <AuthProvider>
-            <MainApp />
-        </AuthProvider>
+        <ThemeProvider>
+            <AuthProvider>
+                <MainApp />
+            </AuthProvider>
+        </ThemeProvider>
     );
 };
 

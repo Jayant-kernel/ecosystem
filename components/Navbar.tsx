@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View } from '../App';
 import { useAuth } from '../contexts/AuthContext';
+import ThemeToggle from './ThemeToggle';
 
 interface NavbarProps {
     navigateTo: (view: View) => void;
@@ -46,6 +47,7 @@ const Navbar: React.FC<NavbarProps> = ({ navigateTo, currentView }) => {
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0">
+                    <ThemeToggle className="size-8 p-1" />
                     {!user ? (
                         <>
                             <button onClick={() => handleNavigation('login')} className="hidden md:block text-xs font-medium text-gray-300 hover:text-white transition-colors font-sans">Sign in</button>

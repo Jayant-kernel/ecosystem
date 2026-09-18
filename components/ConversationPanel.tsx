@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Transcript, Lesson } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserNotes } from '../hooks/useUserNotes';
@@ -214,8 +215,15 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
                                     title="Mute (Alt+M)"
                                     disabled={!isSessionActive}
                                 >
-                                    <i className={`fas fa-microphone-slash ${isMuted ? '' : 'hidden'}`}></i>
-                                    <i className={`fas fa-microphone ${!isMuted ? '' : 'hidden'}`}></i>
+                                    <motion.span
+                                        key={isMuted ? 'muted' : 'unmuted'}
+                                        initial={{ scale: 0.5, rotate: isMuted ? -90 : 90, opacity: 0 }}
+                                        animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                                        transition={{ duration: 0.25, ease: 'easeOut' }}
+                                        className="flex items-center justify-center"
+                                    >
+                                        <i className={`fas ${isMuted ? 'fa-microphone-slash' : 'fa-microphone'}`}></i>
+                                    </motion.span>
                                 </button>
 
                                 <button
