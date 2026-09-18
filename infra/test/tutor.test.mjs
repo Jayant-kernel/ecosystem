@@ -95,3 +95,21 @@ test('system prompt carries lesson context and editor code', () => {
   assert.match(prompt, /map, filter/);
   assert.match(prompt, /console\.log\(1\)/);
 });
+
+test('system prompt carries the teaching playbook and its hard bans', () => {
+  const prompt = buildSystemPrompt({});
+
+  // The 8-step loop and the hint ladder must survive prompt edits.
+  assert.match(prompt, /TEACHING LOOP/);
+  assert.match(prompt, /HINT LADDER — NEVER OPEN WITH THE ANSWER/);
+  assert.match(prompt, /LEXICON — THIS IS A HARD RULE/);
+  assert.match(prompt, /Define every technical term the FIRST time/);
+
+  // The three hard bans.
+  assert.match(prompt, /two sigma/);
+  assert.match(prompt, /learning-style matching/);
+  assert.match(prompt, /learning pyramid/);
+
+  // Listening still outranks the curriculum script.
+  assert.match(prompt, /ANSWER THE LEARNER'S ACTUAL QUESTION/);
+});
