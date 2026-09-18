@@ -32,7 +32,7 @@ const mapUser = (fbUser: FirebaseUser | null): User | null => {
     const name = fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Guest');
     return {
         id: fbUser.uid,
-        email: fbUser.email || `guest_${fbUser.uid.slice(0,5)}@voicecode.ai`, // fake email for internal consistency if needed
+        email: fbUser.email || `guest_${fbUser.uid.slice(0,5)}@ecosystem.ai`, // fake email for internal consistency if needed
         name: name
     };
 };

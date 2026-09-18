@@ -34,7 +34,7 @@ const Navbar: React.FC<NavbarProps> = ({ navigateTo, currentView }) => {
                 } as React.CSSProperties}
             >
                 <div className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => handleNavigation('landing')}>
-                    <span className="text-base font-medium tracking-tight text-white font-sans">VoiceCode</span>
+                    <span className="text-base font-medium tracking-tight text-white font-sans">Ecosystem</span>
                 </div>
 
                 <div className="hidden md:flex items-center gap-6">

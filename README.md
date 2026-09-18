@@ -1,4 +1,4 @@
-# 🎙️ VoiceCode.ai — Voice-Powered AI Coding Tutor
+# 🎙️ Ecosystem — Voice-Powered AI Coding Tutor
 
 Learn to code by talking to an AI tutor. Your voice is transcribed, answered by
 **Claude 3 Haiku on Amazon Bedrock**, and spoken back to you.

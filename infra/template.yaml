@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  VoiceCode voice backend — custom pipeline:
+  Ecosystem voice backend — custom pipeline:
   microphone -> ElevenLabs STT -> Amazon Bedrock (Claude 3 Haiku)
   -> ElevenLabs TTS -> speaker. No ElevenLabs Conversational AI Agent.
 

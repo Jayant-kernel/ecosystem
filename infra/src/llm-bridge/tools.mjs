@@ -53,7 +53,7 @@ export const TOOLS = [
 export function buildSystemPrompt(context = {}) {
   const { lessonTitle, objectives, aiMemory, editorCode } = context;
 
-  return `You are VoiceCode AI, a friendly and patient conversational coding mentor. Your answers are spoken aloud, so keep them concise and natural.
+  return `You are Ecosystem, a friendly and patient conversational coding mentor. Your answers are spoken aloud, so keep them concise and natural.
 
 CRITICAL PRIORITY — RESPOND TO THE LEARNER:
 - Answer the learner's actual question directly and first.

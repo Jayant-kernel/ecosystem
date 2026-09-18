@@ -128,7 +128,7 @@ export const CLOUD_BIG_DATA_COURSE: Course = {
             ],
             demos: [
               {
-                code: "// A least-privilege policy: read ONE bucket, nothing else.\nconst readCourseBucket = {\n  Version: '2012-10-17',\n  Statement: [\n    {\n      Effect: 'Allow',\n      Action: ['s3:GetObject', 's3:ListBucket'],\n      Resource: [\n        'arn:aws:s3:::voicecode-learning-corpus',\n        'arn:aws:s3:::voicecode-learning-corpus/*'\n      ]\n    }\n  ]\n};\n\n// The anti-pattern we avoid:\nconst overBroad = {\n  Effect: 'Allow',\n  Action: '*',\n  Resource: '*'\n};\n\nconsole.log('Granted actions:', readCourseBucket.Statement[0].Action.join(', '));",
+                code: "// A least-privilege policy: read ONE bucket, nothing else.\nconst readCourseBucket = {\n  Version: '2012-10-17',\n  Statement: [\n    {\n      Effect: 'Allow',\n      Action: ['s3:GetObject', 's3:ListBucket'],\n      Resource: [\n        'arn:aws:s3:::ecosystem-learning-corpus',\n        'arn:aws:s3:::ecosystem-learning-corpus/*'\n      ]\n    }\n  ]\n};\n\n// The anti-pattern we avoid:\nconst overBroad = {\n  Effect: 'Allow',\n  Action: '*',\n  Resource: '*'\n};\n\nconsole.log('Granted actions:', readCourseBucket.Statement[0].Action.join(', '));",
                 explainByLine: true
               }
             ],
@@ -559,7 +559,7 @@ export const CLOUD_BIG_DATA_COURSE: Course = {
             ],
             demos: [
               {
-                code: "// Pick a partition key that spreads writes.\nfunction partitionKey(event) {\n  // Good: many distinct users -> even spread across shards\n  return event.userId;\n  // Bad: 'global' would push every event to one shard\n}\n\n// Firehose config intuition\nconst firehose = {\n  deliveryStream: 'learner-events-to-s3',\n  source: 'KinesisStream',\n  destination: 's3://voicecode-data-lake/events/',\n  bufferSizeMB: 5,\n  bufferIntervalSec: 60,\n  transform: 'JSON -> Parquet'\n};\n\nconsole.log(`Buffering ${firehose.bufferSizeMB}MB / ${firehose.bufferIntervalSec}s before flush`);",
+                code: "// Pick a partition key that spreads writes.\nfunction partitionKey(event) {\n  // Good: many distinct users -> even spread across shards\n  return event.userId;\n  // Bad: 'global' would push every event to one shard\n}\n\n// Firehose config intuition\nconst firehose = {\n  deliveryStream: 'learner-events-to-s3',\n  source: 'KinesisStream',\n  destination: 's3://ecosystem-data-lake/events/',\n  bufferSizeMB: 5,\n  bufferIntervalSec: 60,\n  transform: 'JSON -> Parquet'\n};\n\nconsole.log(`Buffering ${firehose.bufferSizeMB}MB / ${firehose.bufferIntervalSec}s before flush`);",
                 explainByLine: true
               }
             ],
