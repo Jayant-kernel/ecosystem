@@ -1,0 +1,86 @@
+name: Deploy Lambda backend
+
+# Deploys the AWS SAM backend in infra/ on every push to main.
+# Frontend code is never built or deployed by this workflow.
+#
+# Manual run: GitHub repo -> Actions -> "Deploy Lambda backend" -> Run workflow.
+# Manual runs always run the full pipeline, even if no infra/ files changed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/deploy-lambda.yml'
+  workflow_dispatch:
+
+# Least privilege: OIDC needs id-token:write, checkout needs contents:read.
+permissions:
+  contents: read
+  id-token: write
+
+# Serialise deployments so two pushes can never deploy concurrently.
+concurrency:
+  group: deploy-lambda-main
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1 # must match infra/samconfig.toml and infra/template.yaml defaults
+  SAM_STACK_NAME: sam-app # must match infra/samconfig.toml (stack_name)
+  SAM_TEMPLATE: infra/template.yaml
+  NODE_VERSION: '20' # must match the Lambda runtime nodejs20.x
+
+jobs:
+  build-test-deploy:
+    name: Test, build and deploy Lambda
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/src/llm-bridge/package-lock.json
+
+      - name: Install Lambda dependencies
+        working-directory: infra/src/llm-bridge
+        run: npm ci
+
+      - name: Run backend tests
+        # Root `npm test` runs `node --test`, which discovers infra/test/*.test.mjs.
+        # External APIs (ElevenLabs/Bedrock/Gemini) are mocked — no real calls, no secrets needed.
+        run: npm test
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Authenticate to AWS with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-deploy-lambda-${{ github.sha }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build with SAM
+        run: sam build --template ${{ env.SAM_TEMPLATE }}
+
+      - name: Deploy with SAM
+        # Idempotent CloudFormation update: preserves the Lambda function names,
+        # API Gateway, IAM roles, memory/timeout, runtime and architecture defined
+        # in infra/template.yaml. Secrets come from GitHub Secrets, never the repo.
+        run: |
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name "${{ env.SAM_STACK_NAME }}" \
+            --region "${{ env.AWS_REGION }}" \
+            --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              ElevenLabsApiKey="${{ secrets.ELEVENLABS_API_KEY }}" \
+              ElevenLabsVoiceId="${{ secrets.ELEVENLABS_VOICE_ID }}" \
+              GeminiApiKey="${{ secrets.GEMINI_API_KEY }}"
