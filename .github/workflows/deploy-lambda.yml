@@ -82,6 +82,45 @@ jobs:
               print(f'{key}={claims.get(key)}')
           EOF
 
+      - name: Diagnose STS assume-role (TEMPORARY)
+        # TEMPORARY debugging: calls AWS STS directly with the GitHub OIDC JWT
+        # to isolate the configure-aws-credentials failure (provider/token
+        # validation vs audience vs trust-policy vs role-ARN mismatch).
+        # Only the AWS exit code and AWS error message are printed. The JWT,
+        # request token, Authorization header and any credentials are never
+        # printed, uploaded or stored. Remove this step after debugging.
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+        run: |
+          set -uo pipefail
+          echo "AWS account ID expected: 873461662097"
+          echo "Role ARN being tested: ${AWS_DEPLOY_ROLE_ARN}"
+          role_account_id="$(printf '%s' "${AWS_DEPLOY_ROLE_ARN}" | cut -d':' -f5)"
+          echo "Role account ID under test: ${role_account_id}"
+          resp=$(curl -sS -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
+          OIDC_JWT="$(printf '%s' "$resp" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+          if [ -z "${OIDC_JWT}" ]; then
+            echo "STS diagnostic aborted: empty OIDC JWT (token request failed)"
+            exit 1
+          fi
+          out_file="$(mktemp)"
+          err_file="$(mktemp)"
+          if aws sts assume-role-with-web-identity \
+            --role-arn "${AWS_DEPLOY_ROLE_ARN}" \
+            --role-session-name "github-oidc-diagnostic" \
+            --web-identity-token "${OIDC_JWT}" \
+            --region ap-south-1 >"${out_file}" 2>"${err_file}"; then
+            echo "STS exit code: 0"
+            echo "STS assume-role succeeded; credentials withheld from logs."
+          else
+            code=$?
+            echo "STS exit code: ${code}"
+            echo "STS error:"
+            cat "${err_file}"
+          fi
+          rm -f "${out_file}" "${err_file}"
+
       - name: Authenticate to AWS with OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
