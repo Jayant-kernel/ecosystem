@@ -1,11 +1,61 @@
+import { useEffect } from 'react';
+import { useThree } from '@react-three/fiber';
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import BackdropText from './BackdropText';
 import CameraRig from './CameraRig';
 import RiggedLaptop from './RiggedLaptop';
 import type { VoiceScreenContent } from './VoiceScreen';
 
 /**
- * Cinematic scene shell: subtle studio/product lighting for the real laptop,
- * the film-driven camera rig, and the rigged laptop. No decorative loops,
- * no shadows, no post-processing — background stays dark.
+ * Local studio reflections for the laptop's near-black PBR body.
+ *
+ * The GLB body is black dielectric plastic plus dark metals. Directional
+ * lights alone leave those surfaces crushed: metals need an environment to
+ * reflect, and near-black diffuse barely responds to punctual lights. A
+ * locally generated RoomEnvironment (no network fetch, built once) gives the
+ * bevels, hinge and trim controlled specular form at low intensity, while the
+ * background, floor and screen — all unlit materials — stay exactly as dark
+ * and crisp as before. No render loop: the texture is built once and the
+ * demand renderer is invalidated a single time.
+ */
+function StudioEnvironment({ intensity = 0.5 }: { intensity?: number }): null {
+  const scene = useThree((s) => s.scene);
+  const gl = useThree((s) => s.gl);
+  const invalidate = useThree((s) => s.invalidate);
+
+  useEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl);
+    const room = new RoomEnvironment();
+    const envTexture = pmrem.fromScene(room, 0.04).texture;
+    const previousEnv = scene.environment;
+    const previousIntensity = scene.environmentIntensity;
+    scene.environment = envTexture;
+    scene.environmentIntensity = intensity;
+    invalidate();
+    return () => {
+      scene.environment = previousEnv ?? null;
+      scene.environmentIntensity = previousIntensity;
+      room.traverse((child) => {
+        const mesh = child as THREE.Mesh;
+        if (mesh.isMesh) {
+          mesh.geometry.dispose();
+          const material = mesh.material as THREE.Material | THREE.Material[];
+          (Array.isArray(material) ? material : [material]).forEach((m) => m.dispose());
+        }
+      });
+      envTexture.dispose();
+      pmrem.dispose();
+    };
+  }, [scene, gl, invalidate, intensity]);
+
+  return null;
+}
+
+/**
+ * Cinematic scene shell: studio/product lighting for the real laptop, the
+ * film-driven camera rig, and the rigged laptop. No decorative loops, no
+ * shadows, no post-processing — background stays dark.
  */
 export default function Scene({ screenContent }: { screenContent?: VoiceScreenContent }): JSX.Element {
   return (
@@ -20,14 +70,19 @@ export default function Scene({ screenContent }: { screenContent?: VoiceScreenCo
         <planeGeometry args={[40, 40]} />
         <meshBasicMaterial color="#0a0a0e" />
       </mesh>
-      {/* Soft ambient base so dark PBR surfaces never crush to pure black. */}
-      <hemisphereLight args={['#9aa3b5', '#0a0a0c', 0.9]} />
+      {/* Image-based form for the black PBR body (see StudioEnvironment). */}
+      <StudioEnvironment intensity={0.5} />
+      {/* Ambient base kept low so the environment carries form without flattening. */}
+      <hemisphereLight args={['#9aa3b5', '#0a0a0c', 0.45]} />
       {/* Key: warm-white, front-top-right — reads the top deck, keys, lid face. */}
-      <directionalLight position={[5, 7, 4]} intensity={2.2} color="#fff4e8" />
+      <directionalLight position={[5, 7, 4]} intensity={2.4} color="#fff4e8" />
       {/* Fill: cool, front-left, low — lifts shadow-side detail without flattening. */}
-      <directionalLight position={[-6, 2.5, 4]} intensity={0.55} color="#b9c6ff" />
-      {/* Rim: cool back-left — separates the black lid silhouette from the black background. */}
-      <directionalLight position={[-4, 4, -5]} intensity={1.4} color="#cfe0ff" />
+      <directionalLight position={[-6, 2.5, 4]} intensity={0.6} color="#b9c6ff" />
+      {/* Rim: cool back-left, raised — separates the black lid silhouette from
+          the black background and grazes the lid edges, hinge and bevels. */}
+      <directionalLight position={[-4, 4, -5]} intensity={2.2} color="#cfe0ff" />
+      {/* Backdrop copy, physically behind the laptop (occluded by the screen). */}
+      <BackdropText />
       <CameraRig />
       <RiggedLaptop content={screenContent} />
     </>
