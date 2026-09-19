@@ -95,6 +95,23 @@ export const TOOLS = [
   },
 ];
 
+const VISUAL_ACTION_ENUM = ['revealNode', 'revealEdge', 'focus', 'highlightNode', 'pulse', 'annotate', 'dimOthers', 'clearFocus', 'wait', 'finish'];
+const VISUAL_NODE_ENUM = ['client', 'gateway', 'compute', 'database', 'queue', 'storage', 'service', 'user'];
+const visualPlanProperties = {
+  title: { type: 'string', maxLength: 100 },
+  nodes: { type: 'array', maxItems: 16, items: { type: 'object', properties: { id: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,47}$' }, label: { type: 'string', maxLength: 60 }, type: { type: 'string', enum: VISUAL_NODE_ENUM }, detail: { type: 'string', maxLength: 120 } }, required: ['id', 'label', 'type'] } },
+  edges: { type: 'array', maxItems: 24, items: { type: 'object', properties: { id: { type: 'string', pattern: '^[a-z][a-z0-9-]{0,47}$' }, from: { type: 'string' }, to: { type: 'string' }, label: { type: 'string', maxLength: 48 } }, required: ['id', 'from', 'to'] } },
+  steps: { type: 'array', maxItems: 64, items: { type: 'object', properties: { type: { type: 'string', enum: VISUAL_ACTION_ENUM }, target: { type: 'string' }, text: { type: 'string', maxLength: 140 }, durationMs: { type: 'integer', minimum: 0, maximum: 6000 } }, required: ['type'] } },
+};
+
+export const VISUAL_TOOLS = [
+  { name: 'offerVisualExplanation', description: 'Offer a live visual explanation only when a spatial or sequential concept would materially help. Never force it on the learner.', parameters: { type: 'object', properties: { topic: { type: 'string', maxLength: 100 }, reason: { type: 'string', maxLength: 160 } }, required: ['topic'] } },
+  { name: 'presentVisualExplanation', description: 'Provide one compact, safe visual plan. Use after a learner asks to see a concept, or pair it with offerVisualExplanation so the UI can hold it until the learner accepts.', parameters: { type: 'object', properties: visualPlanProperties, required: ['title', 'nodes', 'edges', 'steps'] } },
+  { name: 'updateVisualExplanation', description: 'Manipulate the existing visual scene using its semantic ids. Use for follow-up questions; do not rebuild the diagram.', parameters: { type: 'object', properties: { actions: { type: 'array', maxItems: 12, items: { type: 'object', properties: { type: { type: 'string', enum: VISUAL_ACTION_ENUM }, target: { type: 'string' }, text: { type: 'string', maxLength: 140 }, durationMs: { type: 'integer', minimum: 0, maximum: 6000 } }, required: ['type'] } } }, required: ['actions'] } },
+];
+
+TOOLS.push(...VISUAL_TOOLS);
+
 /**
  * Concept lessons have no editor and no console, so the code tools are removed
  * entirely rather than left available for the model to call into the void.
@@ -116,6 +133,7 @@ export const THEORY_TOOLS = [
     },
   },
 ];
+THEORY_TOOLS.push(...VISUAL_TOOLS);
 
 /** Pick the tool set that matches the lesson the learner is actually looking at. */
 export function selectTools(mode) {
@@ -213,6 +231,7 @@ export function buildSystemPrompt(context = {}) {
     lessonGuide,
     lessonFlows,
     lessonTask,
+    visualScene,
   } = context;
 
   const isTheory = lessonMode === 'theory';
@@ -266,6 +285,13 @@ ${TEACHING_PLAYBOOK}
 
 ${modeBlock}
 
+LIVE VISUAL TEACHING:
+- Offer a visual only when the learner is struggling with a flow, relationship, architecture, networking, data path, or another spatial/sequential idea. Do not offer it for every question.
+- When offering, say one short natural sentence and call offerVisualExplanation. In the same tool batch, also call presentVisualExplanation with one small diagram plan; the UI keeps that plan hidden until the learner chooses it.
+- A plan is declarative data only: 2-8 semantic nodes, named edges, and a short sequence of revealNode, revealEdge, focus, pulse, annotate, dimOthers, clearFocus, wait, finish. Never emit UI code, HTML, CSS, coordinates, screenshots, OCR, or computer-control instructions.
+- If CURRENT VISUAL SCENE is present and the learner asks a follow-up, call updateVisualExplanation with semantic ids from that summary. Do not rebuild the whole diagram.
+- The canvas pointer is virtual and internal to the lesson. It never controls the learner's operating-system cursor.
+
 TEACHING TOOLS:
 - Use writeCode to show code in the editor as you explain.
 - After writing code, explain it CHUNK BY CHUNK: call highlightLines with the
@@ -299,7 +325,8 @@ SESSION CONTEXT:
 - Module: ${moduleTitle || 'N/A'}
 - Lesson type: ${isTheory ? 'concept, no code' : 'coding'}
 - Learning objectives: ${objectives || 'N/A'}
-- Learner memory: ${aiMemory || 'New learner, be welcoming.'}${material ? `\n\n${material}` : ''}${editorBlock}`;
+- Learner memory: ${aiMemory || 'New learner, be welcoming.'}
+- CURRENT VISUAL SCENE: ${visualScene || 'No visual scene is open.'}${material ? `\n\n${material}` : ''}${editorBlock}`;
 }
 
 /**

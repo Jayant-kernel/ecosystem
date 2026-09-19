@@ -121,6 +121,7 @@ export function createHandler(deps = {}) {
       lessonGuide: fields.lessonGuide,
       lessonFlows: fields.lessonFlows,
       lessonTask: fields.lessonTask,
+      visualScene: fields.visualScene,
     };
 
     let transcript = '';

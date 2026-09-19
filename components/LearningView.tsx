@@ -10,6 +10,12 @@ import ConversationPanel from './ConversationPanel';
 import CodeWorkspace from './CodeWorkspace';
 import LearningFooter from './LearningFooter';
 import PracticeView from './PracticeView';
+import VisualTutorCanvas from './visual-tutor/VisualTutorCanvas';
+import VisualOfferCard from './visual-tutor/VisualOfferCard';
+import { validateVisualPlan, visualSceneSummary } from './visual-tutor/visualSchema';
+import { visualReducer } from './visual-tutor/visualReducer';
+import { EMPTY_VISUAL_SCENE } from './visual-tutor/visualTypes';
+import type { VisualPlan, VisualSceneState, VisualStep } from './visual-tutor/visualTypes';
 import { executeCodeSafely, executeTests } from '../utils/codeExecutor';
 import { voiceService } from '../services/voiceService';
 import { View } from '../App';
@@ -53,6 +59,14 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     const [highlight, setHighlight] = useState<{ startLine: number; endLine: number; revision: number } | null>(null);
     // Bumped when the tutor runs code so the console tab takes over.
     const [consoleTabSignal, setConsoleTabSignal] = useState(0);
+    const [visualPlan, setVisualPlan] = useState<VisualPlan | null>(null);
+    const [pendingVisualPlan, setPendingVisualPlan] = useState<VisualPlan | null>(null);
+    const [visualOffer, setVisualOffer] = useState<{ topic: string; reason?: string } | null>(null);
+    const [workspaceMode, setWorkspaceMode] = useState<'code' | 'visual'>('code');
+    const [visualScene, setVisualScene] = useState<VisualSceneState>(EMPTY_VISUAL_SCENE);
+    const [followUpVisualSteps, setFollowUpVisualSteps] = useState<VisualStep[]>([]);
+    const visualSummaryRef = useRef('No visual scene is open.');
+    useEffect(() => { visualSummaryRef.current = visualSceneSummary(visualPlan, visualScene.status, visualScene.activeNodeId); }, [visualPlan, visualScene.activeNodeId, visualScene.status]);
 
     const clearHighlight = useCallback(() => {
         pendingHighlightRef.current = null;
@@ -256,6 +270,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         // for typing to finish when later calls in the same batch need the
         // final code (e.g. executeCode); otherwise keep audio latency low.
         const writeCall = functionCalls.find((fc) => fc.name === 'writeCode');
+        const offerCall = functionCalls.find((fc) => fc.name === 'offerVisualExplanation');
         const needsSettledCode = functionCalls.some((fc) =>
             fc.name === 'executeCode' ||
             (fc.name === 'controlApp' && (fc.args?.action as string) === 'run_code')
@@ -320,10 +335,39 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                     }
                     responses.push({ id: fc.id, name: fc.name, response: { result: resultMsg } });
                     break;
+                case 'offerVisualExplanation': {
+                    const topic = typeof fc.args?.topic === 'string' ? fc.args.topic.trim().slice(0, 100) : 'this concept';
+                    const reason = typeof fc.args?.reason === 'string' ? fc.args.reason.trim().slice(0, 160) : undefined;
+                    setVisualOffer({ topic: topic || 'this concept', reason });
+                    responses.push({ id: fc.id, name: fc.name, response: { result: 'Visual explanation offer shown.' } });
+                    break;
+                }
+                case 'presentVisualExplanation': {
+                    const checked = validateVisualPlan(fc.args);
+                    if (!checked.success) {
+                        responses.push({ id: fc.id, name: fc.name, response: { error: checked.error } });
+                        break;
+                    }
+                    setPendingVisualPlan(checked.data);
+                    // A direct learner request can open immediately. When this batch also
+                    // offers a visual, the plan waits behind the learner's explicit choice.
+                    if (!offerCall) { setVisualPlan(checked.data); setWorkspaceMode('visual'); }
+                    responses.push({ id: fc.id, name: fc.name, response: { result: 'Validated visual plan is ready.' } });
+                    break;
+                }
+                case 'updateVisualExplanation': {
+                    if (!visualPlan) { responses.push({ id: fc.id, name: fc.name, response: { error: 'No visual scene is open.' } }); break; }
+                    const candidate = validateVisualPlan({ ...visualPlan, steps: fc.args?.actions });
+                    if (!candidate.success) { responses.push({ id: fc.id, name: fc.name, response: { error: candidate.error } }); break; }
+                    candidate.data.steps.forEach((step, index) => setVisualScene((current) => visualReducer(current, { type: 'step', step, index: current.activeStep + index + 1 })));
+                    setFollowUpVisualSteps((steps) => [...steps, ...candidate.data.steps]);
+                    responses.push({ id: fc.id, name: fc.name, response: { result: 'Visual scene updated.' } });
+                    break;
+                }
             }
         }
         return responses;
-    }, [applyHighlight, applyHighlightLines, clearHighlight, clearHighlightTimers, handleRunCode, handleResetCode, handleCompleteLesson]);
+    }, [applyHighlight, applyHighlightLines, clearHighlight, clearHighlightTimers, handleRunCode, handleResetCode, handleCompleteLesson, visualPlan, visualScene.activeStep]);
 
     const onStreamMessage = useCallback((newTranscript: Transcript) => {
         setTranscript(newTranscript);
@@ -366,7 +410,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         pushHistory,
         resetConversation,
         playExternalAudio
-    } = useVoiceTutor(onStreamMessage, handleToolCall, progress, currentLesson, editorCodeRef, course.title);
+    } = useVoiceTutor(onStreamMessage, handleToolCall, progress, currentLesson, editorCodeRef, course.title, visualSummaryRef);
 
     // Parent module of the open chapter (for the tutor's greeting).
     const currentModule = useMemo(() => {
@@ -383,6 +427,12 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         setTranscript({ user: '', ai: '', isFinal: false });
         resetConversation();
         setIntroState(null);
+        setVisualOffer(null);
+        setPendingVisualPlan(null);
+        setVisualPlan(null);
+        setWorkspaceMode('code');
+        setVisualScene(EMPTY_VISUAL_SCENE);
+        setFollowUpVisualSteps([]);
     }, [currentLessonId, resetConversation]);
 
     const handleRequestIntro = useCallback(async () => {
@@ -452,6 +502,14 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
 
     // Concept lessons have no editor and no console.
     const isTheory = currentLesson?.mode === 'theory';
+    const showVisual = Boolean(visualPlan && workspaceMode === 'visual');
+    const acceptVisualOffer = () => {
+        if (!pendingVisualPlan) return;
+        setVisualPlan(pendingVisualPlan);
+        setVisualOffer(null);
+        setFollowUpVisualSteps([]);
+        setWorkspaceMode('visual');
+    };
 
     if (practiceModule?.practice) {
         return (
@@ -498,8 +556,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                     navigateTo={navigateTo}
                 />
 
-                <div className={`flex-grow flex flex-col gap-6 p-4 md:p-6 overflow-hidden min-h-0 relative z-10 ${isTheory ? '' : 'md:grid md:grid-cols-5'}`}>
-                    <div className={`${isTheory ? 'flex-1' : 'h-[38%] md:h-full md:col-span-2'} min-h-0 flex-shrink-0 animate-fade-in-up flex flex-col`}>
+                <div className={`flex-grow flex flex-col gap-6 p-4 md:p-6 overflow-hidden min-h-0 relative z-10 ${(!isTheory || showVisual) ? 'md:grid md:grid-cols-5' : ''}`}>
+                    <div className={`${isTheory ? (showVisual ? 'h-[38%] md:h-full md:col-span-2' : 'flex-1') : 'h-[38%] md:h-full md:col-span-2'} min-h-0 flex-shrink-0 animate-fade-in-up flex flex-col`}>
                         <div className="flex-1 min-h-0">
                             <ConversationPanel
                                 isSessionActive={isSessionActive}
@@ -520,20 +578,14 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                             />
                         </div>
                     </div>
-                    {!isTheory && (
-                        <div className="flex-1 md:h-full min-h-0 animate-fade-in-up delay-100 md:col-span-3">
-                            <CodeWorkspace
-                                code={editorCode}
-                                onCodeChange={handleCodeChange}
-                                output={consoleOutput}
-                                exercises={exercises}
-                                onRunTests={handleRunTests}
-                                onRunCode={handleRunCode}
-                                onResetCode={handleResetCode}
-                                highlightLines={highlightedLines}
-                                onMountEditor={handleMountEditor}
-                                consoleTabSignal={consoleTabSignal}
-                            />
+                    {(!isTheory || showVisual) && (
+                        <div className="flex-1 md:h-full min-h-0 animate-fade-in-up delay-100 md:col-span-3 relative">
+                            {!isTheory && <>
+                                {visualPlan && <div className="visual-workspace-switch" role="tablist"><button role="tab" aria-selected={workspaceMode === 'code'} onClick={() => setWorkspaceMode('code')}>Code</button><button role="tab" aria-selected={workspaceMode === 'visual'} onClick={() => setWorkspaceMode('visual')}>Visual</button></div>}
+                                <div className={`absolute inset-0 transition-all duration-500 ${showVisual ? 'opacity-0 pointer-events-none translate-y-2' : 'opacity-100'}`}><CodeWorkspace code={editorCode} onCodeChange={handleCodeChange} output={consoleOutput} exercises={exercises} onRunTests={handleRunTests} onRunCode={handleRunCode} onResetCode={handleResetCode} highlightLines={highlightedLines} onMountEditor={handleMountEditor} consoleTabSignal={consoleTabSignal} /></div>
+                            </>}
+                            {showVisual && visualPlan && <div className="absolute inset-0 animate-fade-in"><VisualTutorCanvas plan={visualPlan} followUpSteps={followUpVisualSteps} onClose={() => setWorkspaceMode('code')} onSceneChange={setVisualScene} /></div>}
+                            {visualOffer && <div className="absolute inset-x-3 bottom-3 z-30"><VisualOfferCard topic={visualOffer.topic} reason={visualOffer.reason} onAccept={acceptVisualOffer} onDismiss={() => setVisualOffer(null)} /></div>}
                         </div>
                     )}
                 </div>

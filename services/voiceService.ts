@@ -36,6 +36,8 @@ export interface VoiceRequest {
     lessonFlows?: string;
     /** The exercise the learner is currently working on. */
     lessonTask?: string;
+    /** Compact semantic summary of an existing visual scene, never raw DOM or coordinates. */
+    visualScene?: string;
     /** Ask the tutor to open the conversation with an offer of options. */
     intro?: boolean;
 }
@@ -102,6 +104,7 @@ export const voiceService = {
         if (request.lessonGuide) form.append('lessonGuide', request.lessonGuide);
         if (request.lessonFlows) form.append('lessonFlows', request.lessonFlows);
         if (request.lessonTask) form.append('lessonTask', request.lessonTask);
+        if (request.visualScene) form.append('visualScene', request.visualScene);
 
         const res = await fetch(`${API_BASE_URL}/voice`, { method: 'POST', body: form });
         if (!res.ok) {

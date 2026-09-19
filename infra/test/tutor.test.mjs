@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createProvider, generateTutorResponse, buildSystemPrompt } from '../src/llm-bridge/tutor.mjs';
 import { normalizeHistory, selectTools, TOOLS, THEORY_TOOLS, toolResultText } from '../src/llm-bridge/tools.mjs';
+import { sanitizeVisualToolCalls, validateVisualPlan } from '../src/llm-bridge/visual.mjs';
 import { buildIntro } from '../src/llm-bridge/index.mjs';
 
 test('createProvider defaults to gemini and honours LLM_PROVIDER', () => {
@@ -211,7 +212,8 @@ test('selectTools removes the code tools on concept lessons', () => {
   assert.equal(selectTools(undefined), TOOLS);
 
   const theoryNames = selectTools('theory').map((tool) => tool.name);
-  assert.deepEqual(theoryNames, ['controlApp']);
+  assert.deepEqual(theoryNames, ['controlApp', 'offerVisualExplanation', 'presentVisualExplanation', 'updateVisualExplanation']);
+  assert.ok(!theoryNames.includes('writeCode'));
 
   const fullNames = selectTools('hands-on').map((tool) => tool.name);
   assert.ok(fullNames.includes('writeCode'));
@@ -229,10 +231,24 @@ test('generateTutorResponse passes the mode-appropriate tools to the provider', 
   };
 
   await generateTutorResponse({ provider, transcript: 'hi', context: { lessonMode: 'theory' } });
-  assert.deepEqual(provider.calls[0].tools.map((tool) => tool.name), ['controlApp']);
+  assert.deepEqual(provider.calls[0].tools.map((tool) => tool.name), ['controlApp', 'offerVisualExplanation', 'presentVisualExplanation', 'updateVisualExplanation']);
 
   await generateTutorResponse({ provider, transcript: 'hi', context: { lessonMode: 'hands-on' } });
   assert.ok(provider.calls[1].tools.map((tool) => tool.name).includes('writeCode'));
+});
+
+test('visual plans validate semantic ids and bounded playback data', () => {
+  const plan = { title: 'Request flow', nodes: [{ id: 'browser', label: 'Browser', type: 'client' }, { id: 'lambda', label: 'Lambda', type: 'compute' }], edges: [{ id: 'browser-lambda', from: 'browser', to: 'lambda', label: 'HTTPS' }], steps: [{ type: 'revealNode', target: 'browser' }, { type: 'revealEdge', target: 'browser-lambda' }, { type: 'focus', target: 'lambda' }] };
+  assert.equal(validateVisualPlan(plan), true);
+  assert.equal(validateVisualPlan({ ...plan, edges: [{ id: 'bad-edge', from: 'browser', to: 'missing' }] }), false);
+  assert.equal(validateVisualPlan({ ...plan, steps: [{ type: 'teleport', target: 'browser' }] }), false);
+  assert.equal(validateVisualPlan({ ...plan, nodes: Array.from({ length: 17 }, (_, i) => ({ id: `node-${i}`, label: 'Node', type: 'client' })) }), false);
+});
+
+test('invalid visual calls are removed before they reach the client', () => {
+  const valid = { title: 'Flow', nodes: [{ id: 'browser', label: 'Browser', type: 'client' }], edges: [], steps: [{ type: 'revealNode', target: 'browser' }] };
+  const calls = sanitizeVisualToolCalls([{ name: 'presentVisualExplanation', args: valid }, { name: 'presentVisualExplanation', args: { ...valid, nodes: [{ id: 'BAD id', label: 'x', type: 'client' }] } }, { name: 'writeCode', args: { code: 'x' } }]);
+  assert.deepEqual(calls.map((call) => call.name), ['presentVisualExplanation', 'writeCode']);
 });
 
 test('buildIntro offers options instead of waiting to be asked', () => {

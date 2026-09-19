@@ -59,6 +59,7 @@ export const useVoiceTutor = (
   currentLesson: Lesson | null,
   editorCodeRef?: React.MutableRefObject<string>,
   courseTitle?: string,
+  visualSceneRef?: React.MutableRefObject<string>,
 ) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -298,7 +299,8 @@ export const useVoiceTutor = (
     lessonGuide: clip(currentLesson?.content?.explanations?.join('\n\n'), 3000),
     lessonFlows: clip(lessonFlowsText(currentLesson), 1200),
     lessonTask: clip(currentLesson?.content?.exercises?.[0]?.prompt, 800),
-  }), [courseTitle, currentLesson, progress.aiMemory]);
+    visualScene: clip(visualSceneRef?.current, 1200),
+  }), [courseTitle, currentLesson, progress.aiMemory, visualSceneRef]);
 
   const ensureSession = useCallback(async () => {
     if (!sessionIdRef.current) {

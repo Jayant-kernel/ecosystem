@@ -3,6 +3,7 @@ import { createGeminiProvider } from './providers/gemini.mjs';
 import { createBedrockProvider } from './providers/bedrock.mjs';
 import { createGrokProvider } from './providers/grok.mjs';
 import { createGroqProvider } from './providers/groq.mjs';
+import { sanitizeVisualToolCalls } from './visual.mjs';
 
 export { buildSystemPrompt, selectTools, TOOLS, THEORY_TOOLS } from './tools.mjs';
 
@@ -81,11 +82,12 @@ export async function generateTutorResponse({
   context = {},
 } = {}) {
   if (!provider) throw new Error('An LLM provider is required');
-  return provider.generateTutorResponse({
+  const result = await provider.generateTutorResponse({
     system: buildSystemPrompt(context),
     transcript,
     history,
     context,
     tools: selectTools(context.lessonMode),
   });
+  return { ...result, toolCalls: sanitizeVisualToolCalls(result.toolCalls) };
 }
