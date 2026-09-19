@@ -1,0 +1,26 @@
+version: 1
+# AWS Amplify Hosting build spec for the Ecosystem frontend (Vite + React SPA).
+# Frontend lives at the repository root; the SAM Lambda backend in infra/ is
+# built/deployed separately by .github/workflows/deploy-lambda.yml and is
+# intentionally untouched by this spec.
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # Pin the toolchain to the repo's Node 20 runtime, then install with
+        # the committed lockfile for reproducible builds.
+        - nvm use 20
+        - npm ci --cache .npm --prefer-offline
+    build:
+      commands:
+        # Runs `tsc && vite build`; emits the static site into dist/.
+        # VITE_* values come from the Amplify app's environment variables.
+        - npm run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .npm/**/*
+      - node_modules/**/*
