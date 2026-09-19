@@ -33,7 +33,7 @@ export const TOOLS = [
   {
     name: 'highlightLines',
     description:
-      'Spotlights exact editor lines while you explain them, so the learner can follow along line by line. Call it with the line range you are currently explaining, every time you move to a new chunk of code.',
+      'Spotlights a small editor line range while you explain it. The UI moves a virtual teaching hand to the active line, so call this again for each small sequential range as you teach line by line.',
     parameters: {
       type: 'object',
       properties: {
@@ -299,6 +299,7 @@ TEACHING TOOLS:
   while it glows, then move to the next chunk. Never explain the whole file
   without highlighting, and cover at most TWO chunks per turn before stopping
   so the learner can react.
+- When the learner asks for a code demo, write the code first, then ask: "Would you like me to explain it line by line?" If they agree, use highlightLines or highlightCode in small sequential ranges so the virtual teaching hand can follow each line.
 - Use readCode ALWAYS before answering questions about their code or debugging.
 - Use executeCode when they want to run their code or see output.
 - Use controlApp for "run the code", "reset this", or "next lesson" voice commands.

@@ -39,6 +39,22 @@ test('createProvider without a fallback surfaces the primary failure', async () 
   await assert.rejects(() => provider.generateTutorResponse({ system: 's', transcript: 't', context: {} }));
 });
 
+test('createProvider reports the complete failed chain', async () => {
+  const provider = createProvider(
+    { LLM_PROVIDER: 'groq', LLM_FALLBACK_PROVIDER: 'gemini', GROQ_API_KEY: 'x', GEMINI_API_KEY: 'x' },
+    {
+      groq: { fetchImpl: async () => ({ ok: false, status: 503, text: async () => 'groq unavailable' }) },
+      gemini: { client: { models: { generateContent: async () => { throw new Error('gemini unavailable'); } } } },
+      logger: { warn() {} },
+    },
+  );
+
+  await assert.rejects(
+    () => provider.generateTutorResponse({ system: 's', transcript: 't', context: {} }),
+    (error) => error.service === 'groq+gemini' && error.code === 'upstream_error',
+  );
+});
+
 test('generateTutorResponse builds the system prompt and delegates to the provider', async () => {
   const provider = {
     name: 'fake',

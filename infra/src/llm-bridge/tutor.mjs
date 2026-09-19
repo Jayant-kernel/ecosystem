@@ -4,6 +4,7 @@ import { createBedrockProvider } from './providers/bedrock.mjs';
 import { createGrokProvider } from './providers/grok.mjs';
 import { createGroqProvider } from './providers/groq.mjs';
 import { sanitizeVisualToolCalls } from './visual.mjs';
+import { UpstreamError } from './errors.mjs';
 
 export { buildSystemPrompt, selectTools, TOOLS, THEORY_TOOLS } from './tools.mjs';
 
@@ -53,20 +54,20 @@ export function createProvider(env = process.env, deps = {}) {
     name: ordered.map((provider) => provider.name).join('+'),
 
     /**
-     * Walk the chain in order. If every provider fails, surface the last error
-     * so the caller still reports something truthful.
+     * Walk the chain in order. If every provider fails, preserve the provider
+     * chain in the typed error so the UI does not blame only the fallback.
      */
     async generateTutorResponse(request) {
-      let lastError;
+      const failures = [];
       for (const provider of ordered) {
         try {
           return await provider.generateTutorResponse(request);
         } catch (error) {
-          lastError = error;
+          failures.push(`${provider.name}: ${error?.message || 'request failed'}`);
           logger.warn?.(`[llm] ${provider.name} failed: ${error?.message || error}`);
         }
       }
-      throw lastError;
+      throw new UpstreamError(ordered.map((provider) => provider.name).join('+'), 0, failures.join(' | '));
     },
   };
 }

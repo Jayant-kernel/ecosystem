@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import EditorPanel from './EditorPanel';
 import ConsolePanel from './ConsolePanel';
 import ExercisePanel from './ExercisePanel';
+import CodeTutorPointer from './CodeTutorPointer';
 import { ConsoleOutput, Exercise, TestResult } from '../types';
 
 interface CodeWorkspaceProps {
@@ -18,6 +19,8 @@ interface CodeWorkspaceProps {
     onMountEditor?: (editor: any, monaco: any) => void;
     /** Bumped by the parent when the tutor runs code, so the console tab takes over. */
     consoleTabSignal?: number;
+    tutorFocusLine?: number | null;
+    tutorFocusLabel?: string;
 }
 
 type Tab = 'console' | 'exercises';
@@ -32,9 +35,12 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     onResetCode,
     highlightLines,
     onMountEditor,
-    consoleTabSignal = 0
+    consoleTabSignal = 0,
+    tutorFocusLine = null,
+    tutorFocusLabel
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('console');
+    const [editor, setEditor] = useState<any>(null);
 
     // When the AI tutor takes over the console, bring its tab to the front.
     useEffect(() => {
@@ -47,7 +53,8 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
                 {/* Editor Header decoration */}
                 <div className="h-1 w-full bg-gradient-to-r from-orange-500/20 to-purple-500/20"></div>
                 <div className="flex-grow relative">
-                    <EditorPanel code={code} onCodeChange={onCodeChange} highlightLines={highlightLines} onMountEditor={onMountEditor} />
+                    <EditorPanel code={code} onCodeChange={onCodeChange} highlightLines={highlightLines} onMountEditor={(mountedEditor, monaco) => { setEditor(mountedEditor); onMountEditor?.(mountedEditor, monaco); }} />
+                    <CodeTutorPointer editor={editor} line={tutorFocusLine} label={tutorFocusLabel} />
                 </div>
             </div>
 

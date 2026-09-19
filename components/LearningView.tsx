@@ -179,18 +179,31 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     // Kept alongside the range-based Monaco decoration highlight below so the
     // `highlightCode` tool keeps working while `highlightLines` drives the editor.
     const [highlightedLines, setHighlightedLines] = useState<number[]>([]);
+    const [tutorFocusLine, setTutorFocusLine] = useState<number | null>(null);
     const highlightTimersRef = useRef<number[]>([]);
 
     const clearHighlightTimers = useCallback(() => {
         highlightTimersRef.current.forEach((id) => window.clearTimeout(id));
         highlightTimersRef.current = [];
+        setTutorFocusLine(null);
     }, []);
 
-    /** Stagger highlights so they step through the code as the tutor speaks. */
+    /** Move the teaching hand through each requested line while the active line glows. */
     const applyHighlightLines = useCallback((lines: number[], delayMs: number) => {
+        const ordered = [...new Set(lines.map((line) => Math.floor(Number(line))).filter((line) => line > 0))].slice(0, 24);
+        if (!ordered.length) return;
         const show = window.setTimeout(() => {
-            setHighlightedLines(lines);
-            const clear = window.setTimeout(() => setHighlightedLines([]), 8000);
+            ordered.forEach((line, index) => {
+                const step = window.setTimeout(() => {
+                    setHighlightedLines([line]);
+                    setTutorFocusLine(line);
+                }, index * 1750);
+                highlightTimersRef.current.push(step);
+            });
+            const clear = window.setTimeout(() => {
+                setHighlightedLines([]);
+                setTutorFocusLine(null);
+            }, ordered.length * 1750 + 900);
             highlightTimersRef.current.push(clear);
         }, delayMs);
         highlightTimersRef.current.push(show);
@@ -308,8 +321,9 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                 case 'highlightLines': {
                     const s = Number(fc.args?.startLine) || 1;
                     const e = Number(fc.args?.endLine) || s;
-                    applyHighlight(s, e);
                     const lo = Math.min(s, e), hi = Math.max(s, e);
+                    clearHighlight();
+                    applyHighlightLines(Array.from({ length: Math.min(hi - lo + 1, 24) }, (_, index) => lo + index), 0);
                     responses.push({ id: fc.id, name: fc.name, response: { result: `Lines ${lo}-${hi} highlighted.` } });
                     break;
                 }
@@ -582,7 +596,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                         <div className="flex-1 md:h-full min-h-0 animate-fade-in-up delay-100 md:col-span-3 relative">
                             {!isTheory && <>
                                 {visualPlan && <div className="visual-workspace-switch" role="tablist"><button role="tab" aria-selected={workspaceMode === 'code'} onClick={() => setWorkspaceMode('code')}>Code</button><button role="tab" aria-selected={workspaceMode === 'visual'} onClick={() => setWorkspaceMode('visual')}>Visual</button></div>}
-                                <div className={`absolute inset-0 transition-all duration-500 ${showVisual ? 'opacity-0 pointer-events-none translate-y-2' : 'opacity-100'}`}><CodeWorkspace code={editorCode} onCodeChange={handleCodeChange} output={consoleOutput} exercises={exercises} onRunTests={handleRunTests} onRunCode={handleRunCode} onResetCode={handleResetCode} highlightLines={highlightedLines} onMountEditor={handleMountEditor} consoleTabSignal={consoleTabSignal} /></div>
+                                <div className={`absolute inset-0 transition-all duration-500 ${showVisual ? 'opacity-0 pointer-events-none translate-y-2' : 'opacity-100'}`}><CodeWorkspace code={editorCode} onCodeChange={handleCodeChange} output={consoleOutput} exercises={exercises} onRunTests={handleRunTests} onRunCode={handleRunCode} onResetCode={handleResetCode} highlightLines={highlightedLines} onMountEditor={handleMountEditor} consoleTabSignal={consoleTabSignal} tutorFocusLine={tutorFocusLine} tutorFocusLabel={tutorFocusLine ? `Explaining line ${tutorFocusLine}` : undefined} /></div>
                             </>}
                             {showVisual && visualPlan && <div className="absolute inset-0 animate-fade-in"><VisualTutorCanvas plan={visualPlan} followUpSteps={followUpVisualSteps} onClose={() => setWorkspaceMode('code')} onSceneChange={setVisualScene} /></div>}
                             {visualOffer && <div className="absolute inset-x-3 bottom-3 z-30"><VisualOfferCard topic={visualOffer.topic} reason={visualOffer.reason} onAccept={acceptVisualOffer} onDismiss={() => setVisualOffer(null)} /></div>}
