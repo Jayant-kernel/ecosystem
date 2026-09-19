@@ -609,6 +609,14 @@ html.light .bg-white\/10 {
     margin-left: 3px;
 }
 
+/* Tutor range highlight — inline expression glow for column-aware teaching
+   targets (highlightLines with startColumn/endColumn). Stronger than the
+   whole-line wash so the exact expression reads as the focus. */
+.tutor-range-highlight {
+    background: rgba(249, 115, 22, 0.38);
+    border-radius: 3px;
+}
+
 /* Live Visual Teaching: a contained, technical whiteboard that never controls the OS cursor. */
 .visual-workspace-switch { position:absolute; z-index:40; top:14px; right:18px; display:flex; gap:3px; padding:3px; background:rgba(9,9,11,.78); border:1px solid rgba(255,255,255,.1); border-radius:999px; backdrop-filter:blur(12px); }
 .visual-workspace-switch button { border:0; border-radius:999px; padding:6px 11px; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#71717a; transition:all .25s ease; }

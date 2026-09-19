@@ -119,13 +119,25 @@ test('system prompt carries the teaching playbook and its hard bans', () => {
 test('TOOLS exposes highlightLines with a spoken line range', () => {
   const tool = TOOLS.find((t) => t.name === 'highlightLines');
   assert.ok(tool);
-  assert.deepEqual(Object.keys(tool.parameters.properties).sort(), ['endLine', 'note', 'startLine']);
+  assert.deepEqual(Object.keys(tool.parameters.properties).sort(), ['endColumn', 'endLine', 'note', 'startColumn', 'startLine']);
   assert.deepEqual(tool.parameters.required, ['startLine', 'endLine']);
 });
 
 test('toolResultText describes highlighted lines', () => {
   assert.equal(toolResultText('highlightLines', { startLine: 3, endLine: 5 }), 'Lines 3-5 highlighted.');
+  assert.equal(toolResultText('highlightLines', { startLine: 2, endLine: 2, startColumn: 17, endColumn: 30 }), 'Lines 2-2 highlighted. (columns 17-30).');
   assert.equal(toolResultText('writeCode', {}), 'Code written to the learner editor.');
+});
+
+test('teaching mode instructs explain-this requests to point at small regions', () => {
+  const prompt = buildSystemPrompt({ lessonTitle: 'Functions', moduleTitle: 'Basics' });
+  assert.match(prompt, /TEACHING MODE/);
+  assert.match(prompt, /explain this function/);
+  assert.match(prompt, /startColumn\/endColumn/);
+  assert.match(prompt, /Never invent line numbers/);
+  assert.match(prompt, /better than a wrong one/);
+  assert.match(prompt, /1–4 steps/);
+  assert.match(prompt, /under ~12 words/);
 });
 
 test('buildSystemPrompt names the chapter module and the highlight workflow', () => {
