@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Transcript, Lesson } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserNotes } from '../hooks/useUserNotes';
+import FlowDiagram from './FlowDiagram';
 
 interface ConversationPanelProps {
     isSessionActive: boolean;
@@ -144,6 +145,10 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
                                     <div key={idx} className="prose prose-invert prose-p:text-zinc-300 prose-headings:text-white max-w-none">
                                         <p className="leading-relaxed text-sm md:text-base">{text}</p>
                                     </div>
+                                ))}
+
+                                {currentLesson.content.flows?.map((flow, idx) => (
+                                    <FlowDiagram key={idx} flow={flow} />
                                 ))}
 
                                 <div className="mt-8 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">

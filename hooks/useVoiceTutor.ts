@@ -4,14 +4,34 @@ import { voiceService, base64ToBlob } from '../services/voiceService';
 
 const MAX_HISTORY_TURNS = 8;
 
+/** Trim a context string so a single lesson cannot bloat the prompt. */
+const clip = (value: string | undefined, max: number): string | undefined => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
+};
+
+/** Flatten a lesson's flow charts into "step -> step -> step" lines. */
+const lessonFlowsText = (lesson: Lesson | null): string | undefined => {
+  const flows = lesson?.content?.flows;
+  if (!flows?.length) return undefined;
+  return flows
+    .map((flow) => {
+      const steps = flow.steps.map((step) => step.label).join(' -> ');
+      return flow.title ? `${flow.title}: ${steps}` : steps;
+    })
+    .join('\n');
+};
+
 /**
  * Custom voice pipeline (no ElevenLabs Conversational AI Agent):
  *
- *   mic -> record -> POST /voice -> ElevenLabs STT -> Bedrock Claude
+ *   mic -> record -> POST /voice -> ElevenLabs STT -> Bedrock/Gemini
  *        -> ElevenLabs TTS -> play audio
  *
- * The hook keeps the same return shape the UI already consumes
- * (isSessionActive / isConnecting / isSpeaking / isListening / startSession...).
+ * The tutor speaks first: on the first startSession of a lesson it requests an
+ * intro turn, plays it, and only then opens the microphone.
  */
 export const useVoiceTutor = (
   onStreamMessage: (transcript: Transcript) => void,
@@ -19,6 +39,7 @@ export const useVoiceTutor = (
   progress: Progress,
   currentLesson: Lesson | null,
   editorCodeRef?: React.MutableRefObject<string>,
+  courseTitle?: string,
 ) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -32,6 +53,8 @@ export const useVoiceTutor = (
   const sessionIdRef = useRef<string | null>(null);
   const historyRef = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const finishPlaybackRef = useRef<(() => void) | null>(null);
+  const introPlayedRef = useRef<string | null>(null);
 
   const onStreamRef = useRef(onStreamMessage);
   useEffect(() => { onStreamRef.current = onStreamMessage; }, [onStreamMessage]);
@@ -39,12 +62,20 @@ export const useVoiceTutor = (
   const onToolCallRef = useRef(onToolCall);
   useEffect(() => { onToolCallRef.current = onToolCall; }, [onToolCall]);
 
+  // A new lesson earns a fresh opening from the tutor.
+  useEffect(() => {
+    introPlayedRef.current = null;
+  }, [currentLesson?.id]);
+
   const stopPlayback = useCallback(() => {
-    if (audioElRef.current) {
-      audioElRef.current.pause();
+    const audio = audioElRef.current;
+    if (audio) {
+      audio.pause();
       audioElRef.current = null;
     }
     setIsPlaying(false);
+    finishPlaybackRef.current?.();
+    finishPlaybackRef.current = null;
   }, []);
 
   const releaseStream = useCallback(() => {
@@ -52,27 +83,45 @@ export const useVoiceTutor = (
     streamRef.current = null;
   }, []);
 
-  const playAudio = useCallback(async (base64: string, mimeType: string) => {
-    const url = URL.createObjectURL(base64ToBlob(base64, mimeType));
-    const audio = new Audio(url);
-    audioElRef.current = audio;
-    setIsPlaying(true);
+  /** Resolves when playback finishes, errors, or is stopped by the learner. */
+  const playAudio = useCallback((base64: string, mimeType: string) => {
+    return new Promise<void>((resolve) => {
+      const url = URL.createObjectURL(base64ToBlob(base64, mimeType));
+      const audio = new Audio(url);
+      audioElRef.current = audio;
+      setIsPlaying(true);
 
-    const cleanup = () => {
-      URL.revokeObjectURL(url);
-      if (audioElRef.current === audio) audioElRef.current = null;
-      setIsPlaying(false);
-    };
+      const finish = () => {
+        URL.revokeObjectURL(url);
+        if (audioElRef.current === audio) audioElRef.current = null;
+        finishPlaybackRef.current = null;
+        setIsPlaying(false);
+        resolve();
+      };
 
-    audio.onended = cleanup;
-    audio.onerror = cleanup;
+      finishPlaybackRef.current = finish;
+      audio.onended = finish;
+      audio.onerror = finish;
+      audio.play().catch(finish);
+    });
+  }, []);
 
-    try {
-      await audio.play();
-    } catch (error: any) {
-      cleanup();
-      throw new Error(`Audio playback was blocked by the browser: ${error?.message || error}`);
+  const lessonContext = useCallback(() => ({
+    courseTitle,
+    lessonTitle: currentLesson?.title,
+    objectives: currentLesson?.objectives?.join('; '),
+    aiMemory: progress.aiMemory?.slice(-3).join('; '),
+    lessonMode: currentLesson?.mode,
+    lessonGuide: clip(currentLesson?.content?.explanations?.join('\n\n'), 3000),
+    lessonFlows: clip(lessonFlowsText(currentLesson), 1200),
+    lessonTask: clip(currentLesson?.content?.exercises?.[0]?.prompt, 800),
+  }), [courseTitle, currentLesson, progress.aiMemory]);
+
+  const ensureSession = useCallback(async () => {
+    if (!sessionIdRef.current) {
+      sessionIdRef.current = await voiceService.createSession();
     }
+    return sessionIdRef.current;
   }, []);
 
   const sendRecording = useCallback(async (blob: Blob) => {
@@ -84,18 +133,14 @@ export const useVoiceTutor = (
     setIsProcessing(true);
     setSessionError(null);
     try {
-      if (!sessionIdRef.current) {
-        sessionIdRef.current = await voiceService.createSession();
-      }
+      const sessionId = await ensureSession();
 
       const result = await voiceService.processVoice({
         audio: blob,
-        sessionId: sessionIdRef.current,
+        sessionId,
         history: historyRef.current.slice(-MAX_HISTORY_TURNS),
-        lessonTitle: currentLesson?.title,
-        objectives: currentLesson?.objectives?.join('; '),
-        aiMemory: progress.aiMemory?.slice(-3).join('; '),
         editorCode: editorCodeRef?.current,
+        ...lessonContext(),
       });
 
       onStreamRef.current({
@@ -130,7 +175,32 @@ export const useVoiceTutor = (
     } finally {
       setIsProcessing(false);
     }
-  }, [currentLesson, editorCodeRef, playAudio, progress.aiMemory]);
+  }, [editorCodeRef, ensureSession, lessonContext, playAudio]);
+
+  /** The tutor opens the conversation, then hands over the microphone. */
+  const playIntro = useCallback(async () => {
+    setIsProcessing(true);
+    try {
+      const sessionId = await ensureSession();
+      const result = await voiceService.processVoice({
+        intro: true,
+        sessionId,
+        ...lessonContext(),
+      });
+
+      onStreamRef.current({ user: '', ai: result.response, isFinal: true });
+      historyRef.current = [
+        ...historyRef.current,
+        { role: 'assistant' as const, content: result.response },
+      ].slice(-MAX_HISTORY_TURNS);
+
+      if (result.audio) await playAudio(result.audio, result.audioMimeType);
+    } catch (error: any) {
+      setSessionError(error?.message || 'Could not start the tutor.');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [ensureSession, lessonContext, playAudio]);
 
   const startSession = useCallback(async () => {
     if (isRecording || isProcessing) return;
@@ -141,6 +211,13 @@ export const useVoiceTutor = (
     }
 
     setSessionError(null);
+
+    // Speak first, once per lesson, before opening the microphone.
+    if (!introPlayedRef.current) {
+      introPlayedRef.current = currentLesson?.id ?? 'open';
+      await playIntro();
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -172,7 +249,7 @@ export const useVoiceTutor = (
           : error?.message || 'Could not access the microphone.',
       );
     }
-  }, [isProcessing, isRecording, releaseStream, sendRecording]);
+  }, [currentLesson?.id, isProcessing, isRecording, playIntro, releaseStream, sendRecording]);
 
   const stopSession = useCallback(() => {
     const recorder = recorderRef.current;

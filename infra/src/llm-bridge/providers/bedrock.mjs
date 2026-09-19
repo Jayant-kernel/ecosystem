@@ -7,15 +7,15 @@ import {
   fallbackText,
 } from '../tools.mjs';
 
-const toolConfig = {
-  tools: TOOLS.map((tool) => ({
+const toolConfigFor = (tools) => ({
+  tools: tools.map((tool) => ({
     toolSpec: {
       name: tool.name,
       description: tool.description,
       inputSchema: { json: tool.parameters },
     },
   })),
-};
+});
 
 /**
  * Bedrock Claude provider. Kept behind the same interface as Gemini so the
@@ -32,7 +32,8 @@ export function createBedrockProvider(env = process.env, deps = {}) {
   return {
     name: 'bedrock',
 
-    async generateTutorResponse({ system, transcript, history = [], context = {}, modelId } = {}) {
+    async generateTutorResponse({ system, transcript, history = [], context = {}, modelId, tools = TOOLS } = {}) {
+      const toolConfig = toolConfigFor(tools);
       const messages = [
         ...normalizeHistory(history).map((turn) => ({
           role: turn.role,

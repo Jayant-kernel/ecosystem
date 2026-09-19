@@ -70,6 +70,20 @@ function routeOf(event) {
   };
 }
 
+/**
+ * The tutor's opening turn. It offers a choice instead of waiting for the learner
+ * to work out what to ask. Built from a template rather than the LLM so it is
+ * instant, free, and always on-brand.
+ */
+export function buildIntro(context = {}) {
+  const title = context.lessonTitle || 'this lesson';
+  const options =
+    context.lessonMode === 'theory'
+      ? 'Want me to explain the idea in plain words, or walk you through how the pieces fit together?'
+      : 'Want a plain-English explanation, a walk through how it flows, or a live code demo I can run for you?';
+  return `You're on ${title}. ${options} Just say which.`;
+}
+
 export function createHandler(deps = {}) {
   const {
     fetchImpl = fetch,
@@ -90,43 +104,58 @@ export function createHandler(deps = {}) {
       maxBytes: Number(env.MAX_AUDIO_BYTES) || undefined,
     });
 
-    if (!audio || !audio.length) {
-      throw new BadRequestError('Missing audio file (expected multipart field "audio")');
-    }
-
     const sessionId = (typeof fields.sessionId === 'string' && fields.sessionId) || uuid();
 
-    const transcript = await speechToText(audio, mimeType, {
-      apiKey: env.ELEVENLABS_API_KEY,
-      modelId: env.STT_MODEL_ID || 'scribe_v2',
-      fetchImpl,
-    });
+    const context = {
+      courseTitle: fields.courseTitle,
+      lessonTitle: fields.lessonTitle,
+      objectives: fields.objectives,
+      aiMemory: fields.aiMemory,
+      editorCode: fields.editorCode,
+      lessonMode: fields.lessonMode,
+      lessonGuide: fields.lessonGuide,
+      lessonFlows: fields.lessonFlows,
+      lessonTask: fields.lessonTask,
+    };
 
+    let transcript = '';
     let responseText = '';
     let toolCalls = [];
 
-    if (!transcript) {
-      responseText = EMPTY_TRANSCRIPT_REPLY;
-    } else {
-      const context = {
-        lessonTitle: fields.lessonTitle,
-        objectives: fields.objectives,
-        aiMemory: fields.aiMemory,
-        editorCode: fields.editorCode,
-      };
-      const history = getSessionHistory(sessionId, ttlMs) || parseClientHistory(fields.history);
+    // multipart sends "true" as a string; the JSON fallback sends a boolean.
+    const isIntro = fields.intro === true || fields.intro === 'true';
 
-      const result = await generateTutorResponse({
-        provider: getProvider(),
-        transcript,
-        history,
-        context,
+    if (isIntro) {
+      // The tutor opens the conversation; no audio from the learner yet.
+      responseText = buildIntro(context);
+    } else {
+      if (!audio || !audio.length) {
+        throw new BadRequestError('Missing audio file (expected multipart field "audio")');
+      }
+
+      transcript = await speechToText(audio, mimeType, {
+        apiKey: env.ELEVENLABS_API_KEY,
+        modelId: env.STT_MODEL_ID || 'scribe_v2',
+        fetchImpl,
       });
 
-      responseText = result.text;
-      toolCalls = result.toolCalls;
-      appendSessionTurn(sessionId, 'user', transcript, ttlMs);
-      appendSessionTurn(sessionId, 'assistant', responseText, ttlMs);
+      if (!transcript) {
+        responseText = EMPTY_TRANSCRIPT_REPLY;
+      } else {
+        const history = getSessionHistory(sessionId, ttlMs) || parseClientHistory(fields.history);
+
+        const result = await generateTutorResponse({
+          provider: getProvider(),
+          transcript,
+          history,
+          context,
+        });
+
+        responseText = result.text;
+        toolCalls = result.toolCalls;
+        appendSessionTurn(sessionId, 'user', transcript, ttlMs);
+        appendSessionTurn(sessionId, 'assistant', responseText, ttlMs);
+      }
     }
 
     const audioOut = await textToSpeech(responseText, {

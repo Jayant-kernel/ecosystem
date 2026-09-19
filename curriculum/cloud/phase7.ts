@@ -9,7 +9,7 @@ export const PHASE_7_MODULE: Module = {
   lessons: [
     {
       id: 'ops-observability',
-      title: 'Logs, Metrics, Traces and Alarms',
+      title: 'Logs, metrics, traces and alarms',
       objectives: [
         'Write and parse structured logs',
         'Count errors from log lines',
@@ -19,13 +19,13 @@ export const PHASE_7_MODULE: Module = {
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 11 you redacted sensitive fields before logging. Structured logging is the reason that is easy: a log is a record, not a sentence.',
-          'Why this matters. You cannot debug what you cannot see. When a learner says\u201cit broke\u201d, the only reliable answer comes from logs, metrics and traces you deliberately instrumented beforehand.',
-          'The three signals. Logs are discrete events with detail, best stored as JSON. Metrics are numbers over time, cheap and perfect for alerting. Traces follow one request across services, showing where the time went. You need all three for different questions.',
-          'Mental model: a hospital. Logs are the patient notes. Metrics are the vitals monitor. Traces are the journey from reception to theatre. The monitor tells you something is wrong; the notes tell you what.',
-          'Structured logging. Emit one JSON object per event with a level, a message and identifiers. Never build sentences by concatenating values, and never log secrets or personal data. A structured log can be searched by field; a sentence can only be searched by luck.',
-          'Alarms should be tied to user experience, not to vanity numbers. An error rate above one percent for five minutes is meaningful. CPU at seventy percent for five minutes usually is not. An alarm that fires without a decision to make trains people to ignore alarms.',
-          'Production insight. Instrument before you need it, alert on symptoms rather than causes, and always include a runbook link in the alarm. An alert with no next step is just noise delivered at 3am.'
+          'In lesson 11 you redacted sensitive fields before logging. Structured logging is why that was easy, a log is a record, not a sentence you have to parse with regex.',
+          'You can\'t debug what you can\'t see. When a learner says it broke, the only honest answer comes from logs and metrics you instrumented before things went sideways.',
+          'There are three signals and they answer different questions. Logs are discrete events with detail and work best as JSON. Metrics are numbers over time, cheap and ideal for alerting. Traces follow one request across services and show where time went. You need all three, but for different reasons.',
+          'Hospital works as a quick analogy. Logs are patient notes, metrics are the vitals monitor, traces are the journey from reception to theatre. The monitor tells you something\'s off, the notes say what it was.',
+          'For logs, emit one JSON object per event with a level, a message and some ids. Don\'t stitch sentences together, and never log secrets or personal data. Structured logs can be filtered by field, sentences can only be searched by luck.',
+          'Tie alarms to what users feel. An error rate over one percent for five minutes matters. CPU at seventy percent for five minutes usually doesn\'t. An alarm that fires with no decision attached just trains people to ignore alarms.',
+          'Instrument early, alert on symptoms not causes, and always put a runbook link in the alarm. An alert with no next step is just a 3am noise machine.'
         ],
         demos: [
           {
@@ -101,7 +101,7 @@ console.log(JSON.stringify({
   function: 'saveProgress',
   keyPresent: true
 }));
-// Searchable by field, count-able, and no personal data or secrets.`
+ // Searchable by field, count-able, and no personal data or secrets.`
           }
         ],
         exercises: [
@@ -148,7 +148,7 @@ console.log(JSON.stringify({
     },
     {
       id: 'arch-scalability',
-      title: 'Scaling: Queues, Caches, CDNs and Load Balancers',
+      title: 'Scaling: queues, caches, CDNs and load balancers',
       objectives: [
         'Estimate servers needed for a given load',
         'Explain what a queue protects against',
@@ -158,13 +158,13 @@ console.log(JSON.stringify({
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 5 you simulated fixed capacity against a demand curve. Now we add the components that let a real system absorb that demand.',
-          'Why this matters. Interview questions and production incidents both live here. \u201cWhat happens if traffic grows a hundred times?\u201d is the question that separates someone who has memorised services from someone who can design.',
-          'Load balancing spreads requests across several servers so no single one is overwhelmed, and so a failed server can be removed without downtime. The number of servers you need is the peak request rate divided by what one server can handle, rounded up.',
-          'Caching stores the result of expensive work so the next request is nearly free. It helps most when the same data is requested repeatedly. The hard part is invalidation: a cache that serves stale data after a change is its own kind of outage.',
-          'Queues absorb bursts. Instead of failing when traffic spikes, the system accepts work into a queue and processes it at a sustainable rate. The trade-off is latency: the answer arrives later, but it does arrive. A queue converts an outage into a delay.',
-          'CDNs cache content at edge locations close to users, reducing both latency and load on your origin. They are the cheapest large latency win available for assets and responses that are safe to cache.',
-          'Production insight. The scaling order that usually costs least is: cache first, then queue, then add servers, then shard the data, and finally consider multi-region. Each step adds complexity, so take them in order and measure before moving on.'
+          'In lesson 5 you ran fixed capacity against a demand curve. Now we add the pieces that let a system actually absorb that curve without falling over.',
+          'Whether it\'s an interview or a real incident, the question is the same, what happens if traffic goes 100x? Your answer shows whether you\'ve memorized services or can actually design.',
+          'Load balancing spreads requests across a fleet so no box gets crushed, and a failed box can be pulled out with no downtime. How many servers you need is just peak rate divided by what one can handle, rounded up. Simple math, big consequences.',
+          'Caching keeps the result of expensive work so the next request is almost free. It shines when the same data gets asked for repeatedly. The tough part is invalidation, a stale cache after a change is its own little outage.',
+          'Queues soak up bursts. Instead of failing when traffic spikes, you accept work into a queue and drain it at a sustainable pace. You trade latency for reliability, the answer comes later, but at least it comes. A queue turns an outage into a delay, which users tolerate way better.',
+          'CDNs cache content at edge sites near users, trimming latency and shaving load off your origin. For cacheable assets and responses they\'re the cheapest big win you have.',
+          'Cheapest order to scale tends to be cache first, then queue, then add servers, then shard data, and only then think about multi-region. Each step adds complexity, so go in order and measure before you move on.'
         ],
         demos: [
           {
@@ -273,7 +273,7 @@ console.log('Now measure queue age and alert on it, not on raw traffic.');
     },
     {
       id: 'ops-governance-privacy-dr',
-      title: 'Governance, Privacy, Backup and Disaster Recovery',
+      title: 'Governance, privacy, backup and disaster recovery',
       objectives: [
         'Classify data and set a retention expectation',
         'Distinguish backup from replication',
@@ -283,14 +283,14 @@ console.log('Now measure queue age and alert on it, not on raw traffic.');
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 11 you redacted sensitive data. Governance is that instinct turned into written policy: what we store, for how long, and who may see it.',
-          'Why this matters. Data protection is now a legal requirement in most countries, and it is also a trust requirement. A single careless bucket can end a company\u2019s reputation faster than any performance problem.',
-          'Classification. Give every dataset a label such as public, internal, confidential or personal data, and let the label decide encryption, access and retention. Unclassified data is unmanaged data.',
-          'Retention. Keeping data forever is not neutral. It is a liability with a storage bill. Define how long each class is kept, delete it automatically, and document why.',
-          'Backup is not replication. Replication copies data quickly so a machine failure is invisible. But if someone deletes a table by mistake, that deletion replicates instantly too. A backup is a separate, ideally immutable copy taken earlier, which is what protects against deletion and corruption.',
-          'Mental model: seat belts and airbags. Replication is the seat belt for the everyday crash. Backup is the airbag for the one catastrophic event.',
-          'Disaster recovery is defined by two numbers. The recovery point objective is how much data you can afford to lose, measured in time. The recovery time objective is how long you can afford to be down. Together they select a strategy, from restoring backups to running a fully active second region.',
-          'Production insight. Test restores. An untested backup is a belief, not a capability. Teams that survive real incidents are the ones that practised restoring before they needed to.'
+          'You redacted sensitive data in lesson 11. Governance is that same instinct written down, what do we store, for how long, and who gets to see it.',
+          'This stuff is legal now in most places, and it\'s also about trust. A single careless bucket can do more damage to reputation than any perf issue ever will.',
+          'Give every dataset a label, public, internal, confidential, personal data, whatever you use. Let that label drive encryption, access and retention. Unclassified data is just unmanaged data in practice.',
+          'Keeping data forever isn\'t neutral, it\'s a liability with a storage bill attached. Decide how long each class lives, delete it automatically, and write down why you chose that window.',
+          'Replication isn\'t backup. Replication copies data fast so a machine failure is invisible, great. But if someone deletes a table by accident, that delete replicates instantly as well. A backup is a separate, ideally immutable copy from earlier that lets you recover from a human mistake.',
+          'Seat belts and airbags help here. Replication is the seat belt for the everyday crash. Backup is the airbag for the catastrophic one.',
+          'Disaster recovery is really two numbers. Recovery point objective is how much data you can afford to lose, in time. Recovery time objective is how long you can be down. Those two picks point you at a strategy, from restoring a backup to running a hot second region.',
+          'And test your restores. An untested backup is a belief, not a capability. The folks who survive real incidents are the ones who rehearsed restoring before they had to.'
         ],
         demos: [
           {
@@ -398,7 +398,7 @@ console.log(JSON.stringify(setup));
     },
     {
       id: 'ops-iac-production',
-      title: 'Infrastructure as Code and Production Readiness',
+      title: 'Infrastructure as code and production readiness',
       objectives: [
         'Explain why infrastructure should be versioned as code',
         'Validate an infrastructure template',
@@ -408,13 +408,13 @@ console.log(JSON.stringify(setup));
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 3 you made a Git commit. Infrastructure as code is that habit applied to the cloud itself: the servers, buckets and permissions are described in files, reviewed, and committed.',
-          'Why this matters. If infrastructure is clicked by hand, it cannot be reviewed, cannot be reproduced, and cannot be rolled back. Two environments drift apart, and the difference is discovered during an incident.',
-          'What infrastructure as code means. You write a template that declares the desired resources: this function, this role, this table, this API route. A tool compares the declaration to reality and makes the changes. The same file creates a test environment and a production one.',
-          'Mental model: a recipe versus a finished cake. Clicking in the console produces a cake with no recipe, so you cannot bake it again. A template is the recipe, and the environment is whatever you bake from it today.',
-          'Why it improves security and cost. Because the template is text, it can be reviewed in a pull request, scanned for open permissions, and shown to an auditor. Because it is versioned, you can see exactly who changed a security rule and when.',
-          'Production readiness is a checklist, not a feeling. Does it have least-privilege roles, structured logs, an alarm tied to user experience, a tested restore, a documented teardown, and a cost estimate? If not, it is a prototype wearing a production badge.',
-          'Production insight. The strongest signal of a mature team is that any environment can be destroyed and rebuilt from the repository in one command. That property is what makes recovery calm instead of heroic.'
+          'In lesson 3 you made a Git commit. Infrastructure as code is that habit applied to the cloud itself, servers, buckets and permissions described in files, reviewed, and committed.',
+          'If you build infra by clicking, you can\'t review it, you can\'t reproduce it, and you can\'t roll it back cleanly. Two environments drift, and you discover the difference during an incident, which is the worst time.',
+          'You write a template that declares what you want, this function, this role, this table, this route. A tool compares the declaration with reality and makes it so. The same file can spin up a test env and a prod env, same shape by construction.',
+          'It\'s the recipe vs cake thing. Clicking gives you a cake with no recipe, so you can\'t bake it again reliably. A template is the recipe, the environment is what you bake today.',
+          'Because it\'s text it can be reviewed in a PR, scanned for open permissions, and shown to auditors. Because it\'s versioned you can see who changed a security rule and when, which is huge for both safety and cost control.',
+          'Readiness isn\'t a vibe, it\'s a checklist. Least-privilege roles, structured logs, an alarm tied to user experience, a restore you\'ve actually tested, a documented teardown, and a cost estimate. If those are missing it\'s still a prototype wearing a prod badge.',
+          'A good test is whether you can destroy and rebuild any env from the repo in one command. When that\'s true, recovery feels calm rather than heroic, which is exactly what you want.'
         ],
         demos: [
           {

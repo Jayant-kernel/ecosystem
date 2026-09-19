@@ -15,7 +15,7 @@ export const PHASE_0_MODULE: Module = {
   lessons: [
     {
       id: 'foundations-cloud-safety',
-      title: 'Your Learning Lab and Cloud Safety',
+      title: 'Your learning lab and cloud safety',
       objectives: [
         'Explain why cloud is pay-as-you-go and why idle resources still cost money',
         'Describe what a budget alert does, and what it definitely does not do',
@@ -26,13 +26,13 @@ export const PHASE_0_MODULE: Module = {
       timeEstimateMin: 25,
       content: {
         explanations: [
-          'Why this matters. Cloud computing is pay-as-you-go. You are charged for as long as a resource exists, even if nobody is using it. The most common beginner mistake is not a wrong API call. It is a forgotten database or an idle server that quietly bills you all month. You are about to build real systems, so your first skill is not compute or storage. It is safety.',
-          'What a budget is. In AWS you create a Budget with a monthly limit, for example ten dollars. You attach alerts to it. AWS also calculates a forecast: what the month will cost if the current rate continues. Alerts usually fire at a percentage of the limit, such as 85 percent of actual spend, or 100 percent of the forecast.',
-          'Mental model. Think of cloud resources like a rented apartment. The rent runs whether or not you are inside. A budget alert is the neighbour who phones to warn you that the bill looks wrong. It does not turn the lights off for you.',
-          'The rule almost everyone gets wrong. A budget alert notifies. It does not stop, delete, block, or throttle anything. AWS Budgets sends an email or an event. The only thing that truly stops spend is deleting or stopping the resource itself.',
-          'Teardown before teardown. Before you create any lab resource, decide how you will delete it and who will confirm it is gone. A teardown checklist written in advance takes two minutes and prevents the classic surprise bill.',
-          'Tags are labels you attach to resources, such as project=ecosystem and owner=your-name. They let you find everything you created, and later they let you see which project caused which cost.',
-          'Production insight. Real teams control cost with a combination of tagged resources, budget alerts at 85 percent actual and 100 percent forecast, Cost Anomaly Detection, and a culture where every lab defines its delete step up front. Cost is an engineering concern, not an accounting afterthought.'
+          'You\'re paying for cloud resources the whole time they exist, even if no one\'s using them. That idle database or forgotten server will quietly bill you all month. It\'s the most common beginner surprise, much more common than a bad API call. So before compute or storage, you\'ve got to nail safety.',
+          'In AWS you create a Budget with a monthly limit, say ten dollars, and attach alerts to it. AWS also works out a forecast, that\'s what the month will cost if you keep spending at this rate. Usually you\'ll get pinged at about 85 percent of actual spend, or 100 percent of the forecast.',
+          'Think of a rented apartment. You pay rent whether you\'re home or not. A budget alert is just the neighbour ringing to say your bill looks high. It can warn you, that\'s all it does.',
+          'Here\'s the bit people get wrong the most. A budget alert just tells you. You still have to delete or stop the resource yourself if you want the charges to stop. It\'ll send an email or an event, but it won\'t block or throttle anything on its own.',
+          'So write your teardown checklist before you even create the lab stuff. Decide what you\'ll delete and how you\'ll confirm it\'s gone. Takes a couple minutes and saves you that nasty surprise bill later.',
+          'Tags are little labels you stick on resources, like project=ecosystem and owner=your-name. They help you find everything you made, and later they show which project caused which cost.',
+          'Folks who keep costs under control usually do a few things together. They tag everything, set alerts at 85 percent actual and 100 percent forecast, turn on anomaly detection, and make the delete step part of every lab from the start. Cost ends up being an engineering habit, not something finance tidies up later.'
         ],
         demos: [
           {
@@ -151,7 +151,7 @@ console.log('Action: remove the lab resource, then confirm it is gone.');
     },
     {
       id: 'foundations-web-http-json',
-      title: 'How the Web Talks: HTTP, APIs, and JSON',
+      title: 'How the web talks: HTTP, APIs and JSON',
       objectives: [
         'Explain the client and server roles in a request',
         'Read an HTTP request and response: method, URL, headers, body, status',
@@ -162,12 +162,12 @@ console.log('Action: remove the lab resource, then confirm it is gone.');
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Why this matters. Every cloud service you touch is reached over HTTP. When API Gateway triggers Lambda, when the AWS CLI uploads a file, when your React app saves progress, the same four things travel: a method, a URL, headers, and a body.',
-          'Client and server. The client asks. The server answers. Your browser is a client. A Lambda function behind an API is a server. That one sentence explains most of cloud architecture.',
-          'Mental model: the postal service for data. The URL is the address. The HTTP method is what you want done there. GET reads, POST creates, PUT replaces, DELETE removes. Headers are the envelope with handling instructions such as content-type. The body is the letter. The status code is the reply slip.',
-          'Status codes summarise what happened. 2xx means success. 4xx means the request is wrong or not allowed, for example 403 AccessDenied or 404 NotFound. 5xx means the service failed. 429 means you sent too many requests. This decides whether retrying makes sense: retry 5xx and 429 after a delay, never blindly retry a 4xx.',
-          'JSON is the common language of these messages. It is text representing objects, arrays, strings, numbers, booleans and null. It looks like JavaScript object syntax but is stricter: keys must be double quoted, and there are no comments and no trailing commas.',
-          'Production insight. APIs are contracts. Renaming a field breaks every client, which is why services version their APIs, why 4xx and 5xx are separated, and why disciplined teams add retries with backoff only for the retryable failures.'
+          'Pretty much everything in cloud goes over HTTP. When API Gateway triggers Lambda or your React app saves progress, it\'s the same four pieces traveling: method, URL, headers and body. Get this and you\'ve got the backbone for the rest of the course.',
+          'The client asks, the server answers. Your browser is a client. A Lambda behind an API is a server. That simple split explains a huge chunk of cloud architecture, and you\'ll see it again and again.',
+          'Think of it like post. The URL is the address, the HTTP method says what you want done there. GET reads, POST creates, PUT replaces, DELETE removes. Headers are the envelope with handling notes like content-type. The body is the letter inside. The status code is the reply slip you get back.',
+          'Those status codes tell you what happened. 2xx means it worked. 4xx means the request was wrong or you\'re not allowed, like 403 AccessDenied or 404 NotFound. 5xx means the service messed up. 429 means you asked too fast. That distinction decides retries. You can retry 5xx and 429 after a pause, but retrying a 4xx over and over won\'t help.',
+          'JSON is the language those messages usually speak. It\'s just text for objects, arrays, strings, numbers, booleans and null. Looks like JavaScript but it\'s stricter, keys have to be double quoted, no comments, no trailing commas.',
+          'APIs are contracts. If you rename a field you break every client, which is why services version their APIs and why 4xx and 5xx are kept separate. Teams that handle this well only retry the failures that might actually succeed next time, with a little backoff built in.'
         ],
         demos: [
           {
@@ -288,7 +288,7 @@ if (res.status >= 200 && res.status < 300) {
     },
     {
       id: 'foundations-tools-git-env',
-      title: 'Terminal, Git, and Environment Variables',
+      title: 'Terminal, Git and environment variables',
       objectives: [
         'Describe how a terminal session works and name the core navigation commands',
         'Explain repositories, commits and branches as save points',
@@ -299,12 +299,12 @@ if (res.status >= 200 && res.status < 300) {
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Why this matters. Every cloud tool is reached from a terminal. The AWS, Google and Azure command line interfaces are terminal programs. Deployments are tracked with Git. Configuration belongs in environment variables. These three habits separate a hobby project from engineering work.',
-          'Terminal mental model. You are giving the computer one short, precise instruction at a time. Nothing happens until you press enter, and every command answers you. The commands you need first are pwd (where am I), ls (what is here), cd (move), mkdir (make a folder), cp (copy) and rm (remove).',
-          'Git mental model: save points in a game. A repository is a folder with history. A commit is a labelled save point. A branch is a parallel timeline where you can experiment without breaking the working version. You commit small, working changes, not one giant change at the end.',
-          'Environment variables are settings that live outside your source code, so the same code can run locally and in the cloud with different values. Secrets such as API keys, database passwords and tokens belong in environment variables or a managed secret store, never in source files.',
-          'The rule that prevents most beginner breaches: if it is in a Git commit, assume it is public forever. Keys pushed to a public repository are scraped automatically within minutes. The correct response is to rotate, meaning invalidate and replace, the key immediately. Deleting the commit is not enough, because the value has already been seen.',
-          'Production insight. Healthy teams keep .env out of Git, inject secrets through the deployment pipeline, store them in AWS Secrets Manager or Systems Manager Parameter Store, and scope every key to the smallest action it needs.'
+          'You\'ll reach every cloud tool from a terminal. The AWS, Google and Azure CLIs are all terminal programs, deployments are tracked in Git, and config lives in environment variables. These three habits are what separate a hobby project from something you can actually maintain.',
+          'A terminal is just you giving the computer one short, precise instruction at a time. Nothing happens until you hit enter, then it answers you. The first commands you\'ll lean on are pwd to see where you are, ls to see what\'s here, cd to move, mkdir to make a folder, cp to copy and rm to remove. That\'s enough to get around.',
+          'Git is like save points in a game. A repository is a folder with history, a commit is a labelled save point, a branch is a parallel timeline where you can mess around without breaking the main version. You want small, working commits, not one giant dump at the end.',
+          'Environment variables let the same code run locally and in the cloud with different values, because the settings live outside the code. Anything secret, API keys or database passwords and tokens, belongs there or in a managed secret store. Never in a source file.',
+          'If a secret ends up in a Git commit, assume it\'s public forever. Keys pushed to a public repo get scraped within minutes, bots watch for them. The only fix is to rotate it right away, invalidate it and replace it. Deleting the commit isn\'t enough, someone already saw it.',
+          'A tidy setup keeps .env out of Git, injects secrets through the deploy pipeline, and stores them in something like AWS Secrets Manager or Parameter Store. And each key only gets the smallest permission it actually needs.'
         ],
         demos: [
           {
@@ -421,7 +421,7 @@ export function getClient(env) {
     },
     {
       id: 'foundations-data-sql-quality',
-      title: 'Data Basics: Tables, Files, SQL, and Bad Data',
+      title: 'Data basics: tables, files, SQL and bad data',
       objectives: [
         'Describe data as rows and columns, and distinguish structured from semi-structured data',
         'Ask questions of a table using SELECT, WHERE, GROUP BY and LIMIT',
@@ -432,12 +432,12 @@ export function getClient(env) {
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Why this matters. Choosing storage, designing a pipeline, and reading an analytics chart all require describing data. Big data begins with ordinary tables, files, rows and columns. Get these ideas clear now, and every cloud data service later will feel obvious rather than magical.',
-          'Structured and semi-structured data. A CSV file is rows and columns. JSON can nest objects inside objects. Parquet, which you will meet in Phase 5, stores the same data by column and compresses it. The format you choose decides which questions are cheap to ask later.',
-          'SQL mental model. SQL is how you ask a question of a table, not how you tell the computer to loop. SELECT chooses columns. WHERE filters rows. GROUP BY bundles rows so you can aggregate them. ORDER BY sorts. LIMIT caps the output. You already used this reasoning in JavaScript; SQL is the same logic with a shorter syntax.',
-          'Data quality is the hidden skill. Real datasets contain duplicates, missing values, wrong types and inconsistent wording such as "true" as a string instead of a boolean. Every analytics number inherits the quality of the data underneath it. Fixing this is called data cleaning, and it is most of a data engineer\u2019s day.',
-          'COUNT(*) counts rows. COUNT(DISTINCT userId) counts unique people. Duplicated events inflate the first number and quietly corrupt every metric built on top of it. Deduplicating on a unique identifier is a core pipeline skill, not an optional tidy-up.',
-          'Production insight. The exact cleaning you are about to write by hand is what a Glue or Spark job does at scale in Phase 5, and what a streaming job must handle in Phase 6. You are learning the reasoning in JavaScript first so the distributed tool later feels like the same idea, only bigger.'
+          'Picking storage, building a pipeline, even reading a chart, all comes down to describing data properly. Big data starts with plain tables, rows and columns. Nail these now and every cloud data service later will click into place.',
+          'A CSV is rows and columns. JSON can nest objects inside objects. Parquet, which you\'ll meet in phase 5, stores the same stuff by column and compresses it really well. Which format you pick decides which questions are cheap to ask later.',
+          'SQL is how you ask a question of a table, not how you tell the computer to loop. SELECT picks columns, WHERE filters rows, GROUP BY bundles rows so you can aggregate, ORDER BY sorts, LIMIT caps the output. If you\'ve filtered arrays in JavaScript, you already know the logic, SQL just shortens the syntax.',
+          'Most datasets are a bit messy in practice, duplicates, missing values, wrong types, even the word true as a string instead of a boolean. Every chart inherits whatever quality sits underneath, so cleaning is a huge part of the job.',
+          'COUNT(*) counts rows. COUNT(DISTINCT userId) counts unique people. If events get duplicated, the first number inflates quietly and messes up everything built on top. Deduping on a unique id isn\'t tidying up, it\'s core pipeline work.',
+          'The cleaning you\'re about to do by hand in JavaScript is exactly what a Glue or Spark job does at scale later. A streaming job in phase 6 has to handle the same quirks too. Learn the reasoning now and the distributed tool just feels like the same idea, bigger.'
         ],
         demos: [
           {

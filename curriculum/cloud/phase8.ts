@@ -11,7 +11,7 @@ export const PHASE_8_MODULE: Module = {
   lessons: [
     {
       id: 'ai-bedrock',
-      title: 'Foundation Models and Amazon Bedrock',
+      title: 'Foundation models and Amazon Bedrock',
       objectives: [
         'Call a foundation model through a request and response shape',
         'Write a system instruction that constrains behaviour',
@@ -21,13 +21,13 @@ export const PHASE_8_MODULE: Module = {
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 18 you validated an HTTP request body before doing anything with it. A model call is the same discipline: validate the input, control the cost, and never trust the shape blindly.',
-          'Why this matters. Adding a model to a product is now normal, but doing it safely is not. The difference between a helpful feature and an expensive incident is access control, prompt design and token discipline.',
-          'What Bedrock is. Amazon Bedrock offers foundation models through a single API. You do not run the model yourself and you do not manage weights. You send a model id, a system instruction and a list of messages, and you receive text back.',
-          'Mental model: a specialist you phone. You cannot hire them full time, so you call for a specific question, give them the context they need, and pay by the minute of conversation. Long calls cost more.',
-          'The request shape. A system instruction sets the behaviour. Messages carry the conversation, each with a role of user or assistant and a list of content parts. Inference settings such as the maximum output tokens and the temperature control cost and variability.',
-          'Cost and control. You are billed for input tokens and output tokens, so a long system prompt and an untrimmed context are paid for on every single call. Put the model id in configuration rather than in client code, so you can switch to a cheaper or newer model without shipping a new build.',
-          'Production insight. Treat the model as an untrusted service. Grant the function only the permission to invoke the specific model, log metadata rather than full prompts, set a token ceiling, and never send personal data to a model you have not cleared for that data.'
+          'In lesson 18 you validated an HTTP request body before acting on it. Calling a model needs the same discipline, validate input, cap cost, and don\'t trust the shape blindly.',
+          'Adding a model to a product is routine now, doing it safely isn\'t. Whether it becomes a helpful feature or an expensive incident comes down to access control, prompt design and token hygiene.',
+          'Bedrock lets you use foundation models through one API. You don\'t run the model yourself or manage weights. You send a model id, a system instruction and a list of messages, and you get text back. Simple on the surface, easy to overspend if you\'re not careful.',
+          'It\'s a bit like calling a specialist. You can\'t keep them on staff full time, so you ring for a specific question, give them just enough context, and pay for the length of the conversation. Long calls cost more, obviously.',
+          'The request itself has a few pieces. A system instruction steers behavior, messages carry the chat with role user or assistant and a list of content parts, and inference settings like max output tokens and temperature control cost and randomness.',
+          'You pay for input tokens and output tokens, so a chunky system prompt and a huge context get billed every single call. Keep the model id in config, not baked into client code, so you can swap to a cheaper or newer model without shipping a new build.',
+          'Treat the model like an untrusted service. Grant the function permission to invoke only that one model, log metadata not full prompts, put a ceiling on tokens, and don\'t send personal data to a model you haven\'t cleared for that data.'
         ],
         demos: [
           {
@@ -141,7 +141,7 @@ const request = {
     },
     {
       id: 'ai-rag-grounding',
-      title: 'RAG: Retrieval, Grounding, Citations and Evaluation',
+      title: 'RAG: retrieval, grounding, citations and evaluation',
       objectives: [
         'Explain retrieval-augmented generation and why it reduces hallucination',
         'Chunk the curated data lake output for embedding',
@@ -152,13 +152,13 @@ const request = {
       timeEstimateMin: 40,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 26 you cleaned, validated and published documents and events to the curated zone. That exact output is the input to retrieval. This lesson is your ETL pipeline with a new destination.',
-          'Why this matters. A model only knows what it was trained on. It cannot know your course notes, your policies, or yesterday\u2019s data. Without retrieval it will answer confidently and wrongly. With retrieval it answers from your material and can show you where the claim came from.',
-          'The pipeline. Take the curated documents. Chunk them into passages small enough to be relevant but large enough to be useful. Convert each chunk into an embedding, which is a numeric vector representing meaning. Store the vectors. At question time, embed the question, retrieve the nearest chunks, and put them in the prompt with an instruction to answer only from them and cite them.',
-          'Mental model: an open-book exam. The model is the student, your curated zone is the textbook, and retrieval is the index that finds the three right pages before the student answers. Without the book, the student guesses from memory.',
-          'Chunking is the same reasoning as data quality. Chunks that are too large dilute the meaning and waste tokens. Chunks that are too small lose context and fragment a single idea. Overlapping chunks are a common compromise.',
-          'Ingestion must be idempotent. Re-running ingestion after a fix must not create a second copy of every vector, or retrieval will return the same passage twice and skew the answer. Reuse the deduplication and deterministic-overwrite thinking from Lesson 29.',
-          'Production insight. Evaluate retrieval separately from generation. Ask: did the correct chunk appear in the top results? If retrieval is wrong, no prompt engineering will save the answer. Then require citations, and treat a missing citation as a failure rather than a stylistic preference.'
+          'In lesson 26 you cleaned and published data to the curated zone. That curated output is exactly what retrieval reads from. This lesson just points that pipeline at a new destination.',
+          'A model only knows its training data. It doesn\'t know your course notes or yesterday\'s policies, so without retrieval it will sound confident and be wrong. With retrieval it answers from your material and can point to where the claim came from.',
+          'The flow is straightforward. Take the curated docs, chop them into passages big enough to be useful but small enough to stay relevant, turn each chunk into an embedding, that numeric vector that captures meaning. Store those vectors, and at query time embed the question, pull the nearest chunks, and drop them into the prompt with an instruction to answer only from them and cite.',
+          'Think open-book exam. Model is the student, your curated zone is the textbook, retrieval is the index that finds the right three pages before the student writes. Without the book, they guess from memory, and you can tell.',
+          'Chunk size is a trade-off you\'ve seen before in data quality. Too big and the meaning gets diluted and you waste tokens. Too small and you shred ideas into fragments and lose context. Overlapping chunks are a decent middle ground that many teams settle on.',
+          'Ingestion has to be idempotent. If you rerun it after a fix and create a second copy of every vector, retrieval returns the same passage twice and biases the answer. Reuse the dedupe and deterministic-overwrite habits from lesson 29, they save you here too.',
+          'And evaluate retrieval on its own. Did the right chunk land in the top results? If retrieval is off, no prompt tweak will rescue the answer. Also require citations and treat a missing citation as a failure, not a style nit.'
         ],
         demos: [
           {
@@ -283,7 +283,7 @@ function answer(question, chunks) {
     },
     {
       id: 'capstone-final',
-      title: 'Final Capstone: The Learning Intelligence Platform',
+      title: 'Final capstone: the learning intelligence platform',
       objectives: [
         'Design an end-to-end platform using every layer of the course',
         'Justify each component with a requirement and a trade-off',
@@ -293,12 +293,12 @@ function answer(question, chunks) {
       timeEstimateMin: 60,
       content: {
         explanations: [
-          'Foundation drill. Every lesson in this course is now a component you can reach for. The capstone is the act of choosing among them and defending the choices.',
-          'Why this matters. Systems are built by people who can explain why each box exists. The goal is not to use the most services; it is to satisfy a requirement with the least necessary complexity.',
-          'The platform. A client calls an authenticated API. Serverless functions write operational learner progress to a key-value table and emit events to a stream. A buffered delivery lands raw events in object storage. A batch job cleans them into a partitioned lake. A catalog and a query engine turn the lake into analytics. A model call, grounded by retrieval over the curated zone, answers learner questions with citations.',
-          'The evidence. A finished capstone is not a diagram. It is a working endpoint, structured logs, an alarm tied to user experience, an analytics query with a cost comparison, a restore you have actually tested, and a teardown you have run.',
-          'The trade-offs you must state. Why serverless for the API and batch for the analytics. Why that partition key. Why the buffer size. Why that retention period. Why backing up as well as replicating. Every one of these has a defensible answer and an alternative you rejected.',
-          'Production insight. Write the architecture decision down. A one-page summary of the requirement, the choice, the trade-off and the reason is worth more than a beautiful diagram, because it is what lets someone else maintain the system without you.'
+          'Every lesson so far gave you a component you can reach for. The capstone is about picking among them and being able to defend the picks, not about using everything.',
+          'A system is built by someone who can say why each box exists. The aim isn\'t most services, it\'s meeting the requirement with the least complexity you can get away with.',
+          'The shape looks like this. Client calls an authenticated API, serverless functions write learner progress to a key-value table and push events to a stream. A buffered delivery lands raw events in object storage, a batch job cleans them into a partitioned lake, a catalog and query engine make analytics possible, and a model call grounded by retrieval over the curated zone answers questions with citations.',
+          'You\'re not done with a diagram. You\'re done when there\'s a working endpoint, structured logs you can actually search, an alarm tied to user experience, a query with a cost comparison, a restore you\'ve rehearsed, and a teardown you\'ve run at least once.',
+          'You should be able to explain the trade-offs plainly, why serverless for the API and batch for analytics, why that partition key and that buffer size, why that retention window, why you back up as well as replicate. Each choice has a reason and an alternative you said no to.',
+          'Write it down. A one-page note with requirement, choice, trade-off and reason is worth more than a pretty diagram, because it\'s what lets someone else run the system when you\'re not around.'
         ],
         demos: [
           {

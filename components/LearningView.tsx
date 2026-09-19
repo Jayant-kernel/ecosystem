@@ -9,6 +9,7 @@ import LearningHeader from './LearningHeader';
 import ConversationPanel from './ConversationPanel';
 import CodeWorkspace from './CodeWorkspace';
 import LearningFooter from './LearningFooter';
+import PracticeView from './PracticeView';
 import { executeCodeSafely, executeTests } from '../utils/codeExecutor';
 import { voiceService } from '../services/voiceService';
 import { View } from '../App';
@@ -23,6 +24,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     const { startTracking, stopTracking } = useLearningActivity();
     const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
     const [isCompleting, setIsCompleting] = useState(false);
+    const [practiceModuleId, setPracticeModuleId] = useState<string | null>(null);
 
     // Start tracking time when component mounts, stop when unmounts
     useEffect(() => {
@@ -96,6 +98,32 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         setConsoleOutput([]);
     }, []);
 
+    // --- Tutor line highlighting -------------------------------------------------
+    const [highlightedLines, setHighlightedLines] = useState<number[]>([]);
+    const highlightTimersRef = useRef<number[]>([]);
+
+    const clearHighlightTimers = useCallback(() => {
+        highlightTimersRef.current.forEach((id) => window.clearTimeout(id));
+        highlightTimersRef.current = [];
+    }, []);
+
+    /** Stagger highlights so they step through the code as the tutor speaks. */
+    const applyHighlight = useCallback((lines: number[], delayMs: number) => {
+        const show = window.setTimeout(() => {
+            setHighlightedLines(lines);
+            const clear = window.setTimeout(() => setHighlightedLines([]), 8000);
+            highlightTimersRef.current.push(clear);
+        }, delayMs);
+        highlightTimersRef.current.push(show);
+    }, []);
+
+    // A new lesson starts with a clean editor.
+    useEffect(() => {
+        clearHighlightTimers();
+        setHighlightedLines([]);
+        return clearHighlightTimers;
+    }, [currentLesson?.id, clearHighlightTimers]);
+
     const handleRunTests = useCallback((): TestResult[] => {
         if (!currentLesson || !currentLesson.content.exercises || currentLesson.content.exercises.length === 0) {
             return [];
@@ -154,13 +182,29 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
 
     const handleToolCall = useCallback(async (functionCalls: TutorToolCall[]): Promise<TutorToolResponse[]> => {
         const responses: TutorToolResponse[] = [];
+        let highlightStep = 0;
         for (const fc of functionCalls) {
             switch (fc.name) {
                 case 'writeCode':
+                    clearHighlightTimers();
+                    setHighlightedLines([]);
                     setEditorCode('');
                     typeCode((fc.args?.code as string) || '');
                     responses.push({ id: fc.id, name: fc.name, response: { result: "Code written successfully." } });
                     break;
+                case 'highlightCode': {
+                    const raw = fc.args?.lines;
+                    const lines = Array.isArray(raw)
+                        ? (raw as unknown[]).map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0)
+                        : [];
+                    if (lines.length) {
+                        // Let the editor finish typing before pointing at a line.
+                        applyHighlight(lines, 1200 + highlightStep * 1500);
+                        highlightStep += 1;
+                    }
+                    responses.push({ id: fc.id, name: fc.name, response: { result: "Lines highlighted." } });
+                    break;
+                }
                 case 'executeCode':
                     handleRunCode();
                     responses.push({ id: fc.id, name: fc.name, response: { result: "Code executed." } });
@@ -184,7 +228,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
             }
         }
         return responses;
-    }, [handleRunCode, handleResetCode, handleCompleteLesson]);
+    }, [applyHighlight, clearHighlightTimers, handleRunCode, handleResetCode, handleCompleteLesson]);
 
     const onStreamMessage = useCallback((newTranscript: Transcript) => {
         setTranscript(newTranscript);
@@ -221,14 +265,41 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         stopSession,
         toggleMute,
         sessionError
-    } = useVoiceTutor(onStreamMessage, handleToolCall, progress, currentLesson, editorCodeRef);
+    } = useVoiceTutor(onStreamMessage, handleToolCall, progress, currentLesson, editorCodeRef, course.title);
 
     const handleLessonClick = useCallback(async (lessonId: string) => {
         await updateProgress({ currentLessonId: lessonId });
+        setPracticeModuleId(null);
         if (window.innerWidth < 768) {
             setIsSidebarOpen(false);
         }
     }, [updateProgress]);
+
+    const handlePracticeClick = useCallback((moduleId: string) => {
+        setPracticeModuleId(moduleId);
+        if (window.innerWidth < 768) {
+            setIsSidebarOpen(false);
+        }
+    }, []);
+
+    // End-of-module practice replaces the lesson workspace while it is open.
+    const practiceModule = useMemo(
+        () => course.modules.find((m) => m.id === practiceModuleId && m.practice),
+        [course, practiceModuleId]
+    );
+
+    // Concept lessons have no editor and no console.
+    const isTheory = currentLesson?.mode === 'theory';
+
+    if (practiceModule?.practice) {
+        return (
+            <PracticeView
+                practice={practiceModule.practice}
+                moduleTitle={practiceModule.title}
+                onBack={() => setPracticeModuleId(null)}
+            />
+        );
+    }
 
     return (
         <div className="fixed inset-0 bg-[#0D0D0D] text-gray-200 font-sans flex overflow-hidden selection:bg-orange-500/30 selection:text-orange-200">
@@ -252,6 +323,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}
                 onLessonClick={handleLessonClick}
+                onPracticeClick={handlePracticeClick}
+                practiceModuleId={practiceModuleId}
             />
 
             <main className={`flex flex-col flex-grow relative h-full transition-all duration-300 ${isSidebarOpen ? 'md:ml-80' : ''} w-full`}>
@@ -263,33 +336,38 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                     navigateTo={navigateTo}
                 />
 
-                <div className="flex-grow flex flex-col md:grid md:grid-cols-2 gap-6 p-4 md:p-6 overflow-hidden min-h-0 relative z-10">
-                    <div className="h-[40%] md:h-full min-h-0 flex-shrink-0 animate-fade-in-up">
-                        <ConversationPanel
-                            isSessionActive={isSessionActive}
-                            isConnecting={isConnecting}
-                            isListening={isListening}
-                            isSpeaking={isSpeaking}
-                            isMuted={isMuted}
-                            startSession={startSession}
-                            stopSession={stopSession}
-                            toggleMute={toggleMute}
-                            transcript={transcript}
-                            sessionError={sessionError}
-                            currentLesson={currentLesson}
-                        />
+                <div className={`flex-grow flex flex-col gap-6 p-4 md:p-6 overflow-hidden min-h-0 relative z-10 ${isTheory ? '' : 'md:grid md:grid-cols-5'}`}>
+                    <div className={`${isTheory ? 'flex-1' : 'h-[38%] md:h-full md:col-span-2'} min-h-0 flex-shrink-0 animate-fade-in-up flex flex-col`}>
+                        <div className="flex-1 min-h-0">
+                            <ConversationPanel
+                                isSessionActive={isSessionActive}
+                                isConnecting={isConnecting}
+                                isListening={isListening}
+                                isSpeaking={isSpeaking}
+                                isMuted={isMuted}
+                                startSession={startSession}
+                                stopSession={stopSession}
+                                toggleMute={toggleMute}
+                                transcript={transcript}
+                                sessionError={sessionError}
+                                currentLesson={currentLesson}
+                            />
+                        </div>
                     </div>
-                    <div className="flex-1 md:h-full min-h-0 animate-fade-in-up delay-100">
-                        <CodeWorkspace
-                            code={editorCode}
-                            onCodeChange={handleCodeChange}
-                            output={consoleOutput}
-                            exercises={exercises}
-                            onRunTests={handleRunTests}
-                            onRunCode={handleRunCode}
-                            onResetCode={handleResetCode}
-                        />
-                    </div>
+                    {!isTheory && (
+                        <div className="flex-1 md:h-full min-h-0 animate-fade-in-up delay-100 md:col-span-3">
+                            <CodeWorkspace
+                                code={editorCode}
+                                onCodeChange={handleCodeChange}
+                                output={consoleOutput}
+                                exercises={exercises}
+                                onRunTests={handleRunTests}
+                                onRunCode={handleRunCode}
+                                onResetCode={handleResetCode}
+                                highlightLines={highlightedLines}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <LearningFooter

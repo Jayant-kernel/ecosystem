@@ -11,7 +11,7 @@ export const PHASE_2_MODULE: Module = {
   lessons: [
     {
       id: 'security-identity',
-      title: 'Identity: Authentication vs Authorization',
+      title: 'Identity: authentication vs authorization',
       objectives: [
         'Distinguish authentication from authorization',
         'Check whether a session token is still valid',
@@ -22,12 +22,12 @@ export const PHASE_2_MODULE: Module = {
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 2 you parsed a JSON response and checked its status before trusting the body. A login token is exactly that: a small JSON object you must validate before trusting.',
-          'Why this matters. Almost every security bug is one of two questions asked in the wrong order. Who are you? That is authentication. What are you allowed to do? That is authorization. Confusing them is how systems let the wrong person delete the right data.',
-          'Authentication is identity. It answers whether the caller is who they claim to be. A signed token, a password plus a second factor, or a temporary credential from a role all do this. Notice the word temporary: short-lived identity is safer than a permanent password.',
-          'Authorization is permission. Once we know who you are, authorization decides whether you may perform this action on this resource. Being authenticated says nothing about being allowed. Every signed-in user can read their own progress and none of them can read yours.',
-          'Mental model: a hotel. Authentication is showing your passport at the desk and receiving a room key. Authorization is which doors that key opens. A valid key is not a master key.',
-          'Production insight. Never build a system that checks "is logged in" and then trusts the request. Check the identity, then check the specific action against the specific resource. Log both, because an access-denied event is one of the most useful signals you will ever have.'
+          'Remember lesson 2 where you parsed a JSON response and checked the status before trusting it? A login token is the same idea, it\'s a little JSON blob you have to validate before you trust it.',
+          'Nearly every security bug boils down to two questions asked in the wrong order. Who are you? That\'s authentication. What are you allowed to do? That\'s authorization. Mix them up and the wrong person ends up deleting the right data.',
+          'Authentication is about identity, are you who you say you are? A signed token, a password plus second factor, or a short-lived credential from a role all do this. Notice that word short-lived, it\'s intentional. Temporary identity is just safer than a password that lives forever.',
+          'Authorization is permission. Once you know who someone is, you decide if they can do this action on this resource. Being signed in says nothing about being allowed. Every logged in user can read their own progress, none can read yours.',
+          'One way to keep it straight is a hotel. Authentication is showing your passport at the desk and getting a key card. Authorization is which doors that card actually opens. A valid card isn\'t automatically a master key.',
+          'Don\'t build a system that checks is logged in and then trusts the request. Check who they are, then check if that identity can do this specific thing to this specific resource. Log both answers too, an access-denied event is one of the most useful signals you\'ll have.'
         ],
         demos: [
           {
@@ -145,7 +145,7 @@ console.log(JSON.stringify(deleteRecord({ token: { userId: 'u-2' }, recordOwnerI
     },
     {
       id: 'security-iam-policies',
-      title: 'IAM Policies, Roles and Least Privilege',
+      title: 'IAM policies, roles and least privilege',
       objectives: [
         'Read an IAM policy statement and identify Effect, Action and Resource',
         'Apply explicit-Deny precedence and wildcard matching',
@@ -156,12 +156,12 @@ console.log(JSON.stringify(deleteRecord({ token: { userId: 'u-2' }, recordOwnerI
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 3 you read a role or table name from an environment variable instead of hardcoding it. Now we write the policy that decides whether that value can be used at all.',
-          'Why this matters. IAM is the single most important security control in AWS. It decides who can call which API on which resource. Most cloud incidents are not clever attacks; they are over-broad permissions that let one mistake become a catastrophe.',
-          'What a policy is. A policy is a JSON document with statements. Each statement has an Effect of Allow or Deny, an Action such as s3:GetObject, and a Resource such as an ARN. A statement may also carry a Condition.',
-          'Mental model: a list of explicit gates. Every action is refused by default. An Allow opens one gate. A Deny slams a gate shut and nothing can reopen it. That last point is the rule beginners miss: explicit Deny always wins, even over Allow with a wildcard.',
-          'Least privilege means granting the smallest set of actions on the smallest set of resources that lets the job work. Instead of Action star and Resource star, name the three actions on the one table. This is not bureaucracy; it limits the damage from a bug or a stolen credential.',
-          'Production insight. Use roles, not keys, for services. A Lambda function, an EC2 instance and a browser session all assume a role and receive temporary credentials that rotate automatically. If you must use a key for a human, enable multi-factor authentication and rotate it.'
+          'In lesson 3 you read a role or table name from an environment variable instead of hardcoding it. Now we write the policy that decides if that value can even be used.',
+          'IAM is the most important security control in AWS. It decides who can call which API on which resource. Most incidents aren\'t clever hacks, they\'re permissions left too broad so one small mistake turns into a big one.',
+          'A policy is just a JSON document with statements. Each statement has an Effect, Allow or Deny, an Action like s3:GetObject, and a Resource like an ARN. It can also carry a Condition for extra checks.',
+          'Think of a row of explicit gates. Everything is refused by default. An Allow opens one gate. A Deny slams it shut and nothing can reopen it. That last bit catches beginners, an explicit Deny always beats an Allow, even one with a wildcard.',
+          'Least privilege means giving the smallest set of actions on the smallest set of resources that still gets the job done. Instead of Action star and Resource star, name the three actions on the one table you need. It\'s not paperwork, it limits how far a bug or a stolen credential can reach.',
+          'For services, use roles not keys. A Lambda or an EC2 instance assumes a role and gets temporary credentials that rotate on their own. If a person really needs a key, turn on MFA and rotate it regularly.'
         ],
         demos: [
           {
@@ -290,7 +290,7 @@ console.log('Actions granted: every DynamoDB action, on every table.');`,
     },
     {
       id: 'security-secrets-encryption',
-      title: 'Secrets, Encryption and Sensitive Data',
+      title: 'Secrets, encryption and sensitive data',
       objectives: [
         'Distinguish encryption at rest from encryption in transit',
         'Redact sensitive fields before writing a log',
@@ -301,12 +301,12 @@ console.log('Actions granted: every DynamoDB action, on every table.');`,
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 3 you learned to keep configuration out of source code. Secrets are the strictest version of that rule: they must not appear in source, in logs, or in a client bundle.',
-          'Why this matters. Data leaks are rarely dramatic. They are usually a log file with an email address, an error message containing a token, or a bucket of customer records left open. None of these are exotic attacks; they are ordinary carelessness at scale.',
-          'Encryption has two halves. At rest means the stored bytes are unreadable without a key, so a stolen disk or snapshot is useless. In transit means the connection is encrypted, so nobody on the network can read the request. You need both, and modern platforms give you both by default.',
-          'Mental model for redaction: a photocopier with a black marker. Before a document leaves the room, every sensitive field is blacked out. The point is to remove the value while keeping the shape of the record so it is still useful for debugging.',
-          'Secrets management. A password or key should live in a secret store and be fetched at runtime by an identity that is allowed to read it. That means the secret is never in your repository, never in your container image, and can be rotated without a code change.',
-          'Production insight. Classify data before you store it, encrypt everything, log identifiers instead of values, and lock down access so that only the service that needs a secret can read it. When a key leaks, rotate it immediately; deleting the commit does not un-leak it.'
+          'You learned in lesson 3 to keep config out of source. Secrets are the strict version of that, they shouldn\'t show up in source, logs or a client bundle. Ever.',
+          'Leaks are rarely dramatic. Usually it\'s a log with an email, an error that includes a token, or a bucket left open. Not exotic attacks, just ordinary carelessness at scale.',
+          'Encryption has two halves and you need both. At rest means the bytes on disk are unreadable without the key, so a stolen disk or snapshot is useless. In transit means the connection itself is encrypted, so no one on the network can read the request. Most platforms give you both by default now, you just shouldn\'t turn them off.',
+          'For logging, picture a photocopier with a black marker. Before a document leaves the room you black out every sensitive field. You keep the shape of the record so it\'s still useful for debugging, but the values are gone.',
+          'Passwords and keys should live in a secret store and get fetched at runtime by whatever identity is allowed to read them. That way they\'re never in your repo or container image, and you can rotate them without a code change.',
+          'Get in the habit of classifying data before you store it, encrypting everything, logging ids instead of values, and scoping access so only the service that needs a secret can read it. And if a key does leak, rotate it immediately. Deleting the commit doesn\'t un-leak it.'
         ],
         demos: [
           {
@@ -432,7 +432,7 @@ logPayment(
     },
     {
       id: 'security-vpc-network',
-      title: 'VPCs, Subnets and Security Groups',
+      title: 'VPCs, subnets and security groups',
       objectives: [
         'Explain public and private subnets in plain terms',
         'Read a security group rule set and decide if traffic is allowed',
@@ -443,12 +443,12 @@ logPayment(
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 2 you learned that a request carries a port and a source. Networking rules are that idea enforced: which port, from where, to what.',
-          'Why this matters. A database that is reachable from the internet is a countdown timer. Most cloud breaches begin with something that should have been private but was exposed. Network layout is how you make exposure impossible rather than unlikely.',
-          'What a VPC is. A virtual private cloud is your own isolated network inside the provider. You divide it into subnets. A public subnet can reach the internet and be reached from it. A private subnet cannot be reached from the internet but can still reach outward through a controlled gateway.',
-          'Mental model: an office building. The public subnet is the lobby anyone may enter. The private subnet is the secure floor that only staff with the right badge may reach. A security group is the badge reader on each door.',
-          'Security groups are stateful allow-lists. You write rules such as "allow port 443 from anywhere" or "allow port 5432 only from the API security group". Anything not explicitly allowed is denied, and you cannot write a deny rule at all. That default is deliberate: it fails safe.',
-          'Production insight. The healthy layout is: load balancer in public subnets, application in private subnets, database in private subnets reachable only from the application security group, and no direct internet path to data. Then audit those rules, because an unused wide-open rule is the same as a hole.'
+          'In lesson 2 a request carried a port and a source address. Networking rules are that same idea enforced, which port, from where, to what.',
+          'A database reachable from the internet is a countdown. Most cloud breaches start with something that should have been private but was left exposed. Network layout is how you make that exposure impossible, not just unlikely.',
+          'A virtual private cloud is your own isolated network inside the provider. You split it into subnets. A public subnet can reach the internet and be reached from it. A private subnet can\'t be reached from the internet but can still reach out through a controlled gateway.',
+          'Think office building. Public subnet is the lobby anyone can walk into. Private subnet is the secure floor that only staff with a badge can reach. A security group is the badge reader on each door, and you need it to be explicit.',
+          'Security groups are allow-lists and they\'re stateful. You write rules like allow port 443 from anywhere or allow port 5432 only from the API security group. Anything you don\'t explicitly allow gets denied, and you can\'t even write a deny rule. That default is on purpose, it fails safe.',
+          'The layout you want is pretty standard. Load balancer in public subnets, app in private subnets, database in private subnets reachable only from the app\'s security group, and no direct internet path to data at all. Then keep auditing those rules, an old wide-open rule you forgot about is the same as a hole.'
         ],
         demos: [
           {

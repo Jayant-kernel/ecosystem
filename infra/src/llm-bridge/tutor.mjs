@@ -1,8 +1,8 @@
-import { buildSystemPrompt } from './tools.mjs';
+import { buildSystemPrompt, selectTools } from './tools.mjs';
 import { createGeminiProvider } from './providers/gemini.mjs';
 import { createBedrockProvider } from './providers/bedrock.mjs';
 
-export { buildSystemPrompt, TOOLS } from './tools.mjs';
+export { buildSystemPrompt, selectTools, TOOLS, THEORY_TOOLS } from './tools.mjs';
 
 /**
  * Provider factory. Switching the LLM is a single env var:
@@ -33,5 +33,6 @@ export async function generateTutorResponse({
     transcript,
     history,
     context,
+    tools: selectTools(context.lessonMode),
   });
 }

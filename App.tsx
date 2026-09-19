@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import LandingPage from './components/CourseSelection';
 import DashboardPage from './pages/DashboardPage';
 import LearningView from './components/LearningView';
@@ -22,21 +22,26 @@ const MainApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('landing');
   const [activeCourseId, setActiveCourseId] = useState<string>(DEFAULT_COURSE_ID);
   const { user, loading } = useAuth();
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   const activeCourse = getCourseById(activeCourseId);
 
+  // Plain view switch: no transition, no overlay.
   const navigateTo = useCallback<NavigateFn>((view, courseId) => {
     const targetCourseId = courseId ?? activeCourseId;
-    if (courseId) {
-      setActiveCourseId(courseId);
-    }
     // Protected routes — skipped for public (no-auth) courses.
     const protectedViews: View[] = ['dashboard', 'lesson', 'explanations'];
     const bypassAuth = isCoursePublic(targetCourseId);
     if (protectedViews.includes(view) && !user && !loading && !bypassAuth) {
-       setCurrentView('login');
-       window.scrollTo(0, 0);
-       return;
+      if (courseId) {
+        setActiveCourseId(courseId);
+      }
+      setCurrentView('login');
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (courseId) {
+      setActiveCourseId(courseId);
     }
     setCurrentView(view);
     window.scrollTo(0, 0);
@@ -85,18 +90,18 @@ const MainApp: React.FC = () => {
         return <LandingPage navigateTo={navigateTo} />;
     }
   };
-  
+
   // Views that don't need standard Nav/Footer
   if (currentView === 'lesson') {
-    return renderContent();
+    return <div ref={contentRef}>{renderContent()}</div>;
   }
 
   return (
-    <>
+    <div ref={contentRef}>
       <Navbar navigateTo={navigateTo} currentView={currentView} />
       <main>{renderContent()}</main>
       <Footer />
-    </>
+    </div>
   );
 };
 

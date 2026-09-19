@@ -13,6 +13,8 @@ interface CodeWorkspaceProps {
     onRunTests: () => TestResult[];
     onRunCode: () => void;
     onResetCode: () => void;
+    /** Lines the tutor is currently explaining. */
+    highlightLines?: number[];
 }
 
 type Tab = 'console' | 'exercises';
@@ -24,21 +26,22 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     exercises,
     onRunTests,
     onRunCode,
-    onResetCode
+    onResetCode,
+    highlightLines,
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('console');
 
     return (
         <div className="flex flex-col h-full gap-4">
-            <div className="flex-[3] min-h-0 bg-zinc-900/40 backdrop-blur-md rounded-[1.5rem] border border-white/5 overflow-hidden shadow-xl flex flex-col relative group">
+            <div className="flex-[2] min-h-0 bg-zinc-900/40 backdrop-blur-md rounded-[1.5rem] border border-white/5 overflow-hidden shadow-xl flex flex-col relative group">
                 {/* Editor Header decoration */}
                 <div className="h-1 w-full bg-gradient-to-r from-orange-500/20 to-purple-500/20"></div>
                 <div className="flex-grow relative">
-                    <EditorPanel code={code} onCodeChange={onCodeChange} />
+                    <EditorPanel code={code} onCodeChange={onCodeChange} highlightLines={highlightLines} />
                 </div>
             </div>
 
-            <div className="flex-[2] min-h-0 flex flex-col bg-zinc-900/40 backdrop-blur-md rounded-[1.5rem] border border-white/5 overflow-hidden shadow-xl">
+            <div className="flex-[3] min-h-0 flex flex-col bg-zinc-900/40 backdrop-blur-md rounded-[1.5rem] border border-white/5 overflow-hidden shadow-xl">
                 <div className="flex items-center justify-between px-4 py-2 border-b border-white/5 bg-black/20 shrink-0">
                     <div className="flex gap-4">
                         <button

@@ -9,9 +9,13 @@ interface RoadmapSidebarProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onLessonClick: (lessonId: string) => void;
+  /** Opens the end-of-module practice for that module. */
+  onPracticeClick: (moduleId: string) => void;
+  /** Module whose practice is currently open, if any. */
+  practiceModuleId: string | null;
 }
 
-const RoadmapSidebar: React.FC<RoadmapSidebarProps> = ({ course, completedLessons, currentLessonId, onBack, isOpen, setIsOpen, onLessonClick }) => {
+const RoadmapSidebar: React.FC<RoadmapSidebarProps> = ({ course, completedLessons, currentLessonId, onBack, isOpen, setIsOpen, onLessonClick, onPracticeClick, practiceModuleId }) => {
   let globalLessonIndex = 0;
 
   return (
@@ -59,6 +63,35 @@ const RoadmapSidebar: React.FC<RoadmapSidebarProps> = ({ course, completedLesson
                   </li>
                 );
               })}
+
+              {module.practice && (
+                <li className="relative group/item">
+                  {module.lessons.length > 0 && (
+                    <div className="absolute left-[23px] top-0 h-4 w-px bg-white/5 -z-10"></div>
+                  )}
+                  <button
+                    onClick={() => onPracticeClick(module.id)}
+                    className={`w-full flex items-center p-2 rounded-xl transition-all cursor-pointer text-left relative z-10 border ${
+                      practiceModuleId === module.id
+                        ? 'bg-purple-500/10 border-purple-500/30'
+                        : 'border-dashed border-white/10 hover:bg-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center border-[2px] mr-3 flex-shrink-0 transition-all font-bold shadow-lg ${
+                        practiceModuleId === module.id
+                          ? 'bg-[#0D0D0D] border-purple-500 text-purple-400 shadow-purple-500/20'
+                          : 'border-white/10 bg-[#0D0D0D] text-zinc-600 group-hover/item:border-purple-500/40 group-hover/item:text-purple-400'
+                      }`}
+                    >
+                      <i className="fas fa-dumbbell text-[10px]"></i>
+                    </div>
+                    <span className={`text-sm font-medium leading-tight ${practiceModuleId === module.id ? 'text-white' : 'text-zinc-500 group-hover/item:text-zinc-300'}`}>
+                      Practice: {module.practice.mcqs.length + module.practice.coding.length} questions
+                    </span>
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
         ))}

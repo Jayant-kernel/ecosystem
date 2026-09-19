@@ -118,6 +118,20 @@ export interface LessonContent {
     debugging: DebuggingChallenge[];
     exercises: Exercise[];
     assessment: Assessment;
+    /** Optional flow charts rendered in the Guide tab, where a sequence matters. */
+    flows?: Flow[];
+}
+
+export interface FlowStep {
+    label: string;
+    detail?: string;
+}
+
+export interface Flow {
+    title?: string;
+    /** "vertical" (default) reads as a timeline; "horizontal" reads as a chain. */
+    direction?: 'horizontal' | 'vertical';
+    steps: FlowStep[];
 }
 
 export interface MemoryUpdates {
@@ -134,12 +148,57 @@ export interface Lesson {
     content: LessonContent;
     memoryUpdates: MemoryUpdates;
     nextLesson?: string | null;
+    /**
+     * How this lesson should be taught.
+     * - theory:     concept/judgement. No editor, no console.
+     * - light:      a few guided lines; hints available immediately.
+     * - hands-on:   full coding loop with tests.
+     */
+    mode?: LessonMode;
 }
+
+export type LessonMode = 'theory' | 'light' | 'hands-on';
 
 export interface Module {
     id: string;
     title: string;
     lessons: Lesson[];
+    practice?: ModulePractice;
+}
+
+// --- Module Practice (end-of-module MCQ + coding drills) ---
+
+export type PracticeDifficulty = 'easy' | 'medium';
+
+export interface PracticeMcq {
+    id: string;
+    prompt: string;
+    choices: string[];
+    answer: string;
+    explanation: string;
+}
+
+export interface PracticeCoding {
+    id: string;
+    title: string;
+    difficulty: PracticeDifficulty;
+    prompt: string;
+    starterCode: string;
+    tests: string[];
+    /** Progressive hints, revealed one at a time. */
+    hints: string[];
+    /** Where the animated arrow should point when a hint is shown. */
+    target: { label: string; line: number };
+    /** Steps revealed one by one by the animated explanation. */
+    explanation: string[];
+    solution: string;
+}
+
+export interface ModulePractice {
+    moduleId: string;
+    title: string;
+    mcqs: PracticeMcq[];
+    coding: PracticeCoding[];
 }
 
 export interface Course {

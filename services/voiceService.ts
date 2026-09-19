@@ -19,13 +19,25 @@ export interface VoiceResult {
 }
 
 export interface VoiceRequest {
-    audio: Blob;
+    /** Omitted for the intro turn, where the tutor speaks first. */
+    audio?: Blob;
     sessionId?: string;
     history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    courseTitle?: string;
     lessonTitle?: string;
     objectives?: string;
     aiMemory?: string;
     editorCode?: string;
+    /** 'theory' | 'light' | 'hands-on' — gates the tutor's code tools. */
+    lessonMode?: string;
+    /** The lesson guide text, so the tutor can teach from the same material. */
+    lessonGuide?: string;
+    /** The lesson's flow chart, flattened to "step -> step -> step". */
+    lessonFlows?: string;
+    /** The exercise the learner is currently working on. */
+    lessonTask?: string;
+    /** Ask the tutor to open the conversation with an offer of options. */
+    intro?: boolean;
 }
 
 export interface ExecutionResult {
@@ -54,13 +66,22 @@ export const voiceService = {
         if (!API_BASE_URL) throw new Error('Voice backend not configured. Set VITE_API_BASE_URL.');
 
         const form = new FormData();
-        form.append('audio', request.audio, 'audio.webm');
+        if (request.intro) {
+            form.append('intro', 'true');
+        } else if (request.audio) {
+            form.append('audio', request.audio, 'audio.webm');
+        }
         if (request.sessionId) form.append('sessionId', request.sessionId);
         if (request.history?.length) form.append('history', JSON.stringify(request.history));
+        if (request.courseTitle) form.append('courseTitle', request.courseTitle);
         if (request.lessonTitle) form.append('lessonTitle', request.lessonTitle);
         if (request.objectives) form.append('objectives', request.objectives);
         if (request.aiMemory) form.append('aiMemory', request.aiMemory);
         if (request.editorCode) form.append('editorCode', request.editorCode);
+        if (request.lessonMode) form.append('lessonMode', request.lessonMode);
+        if (request.lessonGuide) form.append('lessonGuide', request.lessonGuide);
+        if (request.lessonFlows) form.append('lessonFlows', request.lessonFlows);
+        if (request.lessonTask) form.append('lessonTask', request.lessonTask);
 
         const res = await fetch(`${API_BASE_URL}/voice`, { method: 'POST', body: form });
         if (!res.ok) {

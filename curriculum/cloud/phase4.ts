@@ -10,7 +10,7 @@ export const PHASE_4_MODULE: Module = {
   lessons: [
     {
       id: 'bigdata-when-data-is-big',
-      title: 'When Data Becomes Big',
+      title: 'When data becomes big',
       objectives: [
         'Explain volume, velocity, variety and value in practical terms',
         'Estimate why a single machine stops coping',
@@ -20,12 +20,12 @@ export const PHASE_4_MODULE: Module = {
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 4 you cleaned and grouped a handful of rows. Now we scale that same idea until one machine cannot hold it.',
-          'Why this matters. Big data is not a badge of honour. Most datasets are small and are cheaper to process on one machine. Knowing where the boundary lies stops you from building distributed infrastructure you do not need.',
-          'The four V words. Volume is how much data. Velocity is how fast it arrives. Variety is how many different shapes it has. Value is whether anyone will act on the result. The last one is the only one that justifies the other three.',
-          'Mental model: water. A glass is fine on a desk. A bathtub needs plumbing. A river needs a treatment plant. The engineering problem changes with the volume and the rate, not with the label on the bottle.',
-          'Why one machine stops coping. Memory is finite, so the data may not fit. Disk reads are slow, so scanning a huge file takes time. And a single machine cannot be in two places, so there is a hard ceiling on throughput no matter how much you optimise.',
-          'Production insight. Before reaching for a cluster, ask three questions. Does it fit on one machine, does it fit in memory, and how fast does the answer need to be? In many companies the correct answer is a single well-indexed database plus one good query. Distributed systems are a cost, not a default.'
+          'In lesson 4 you cleaned and grouped a handful of rows. Now stretch that same idea until one machine can\'t really hold it anymore.',
+          'Big data isn\'t a trophy. Most datasets are small and cheaper on one machine, knowing where that boundary is stops you building distributed plumbing you don\'t need.',
+          'Volume is how much there is. Velocity is how fast it shows up. Variety is how many different shapes it comes in. Value is whether anyone will actually do anything with the answer. Honestly that last one justifies the other three, without it the rest is just expensive trivia.',
+          'Think water. A glass sits fine on a desk, a bathtub needs plumbing, a river needs a treatment plant. The engineering shifts with amount and rate, not with what you call the bottle.',
+          'A single machine hits limits pretty quickly. Memory is finite so the data might not fit, disk scans get slow as files swell, and one box can only do so much at once. No amount of tuning removes that ceiling.',
+          'Before you reach for a cluster, just ask whether it fits on one machine, whether it fits in memory, and how fast you actually need the answer. In a lot of companies a single decent database and a well written query is enough. Distributed systems are a cost you take on, not a default.'
         ],
         demos: [
           {
@@ -130,7 +130,7 @@ console.log(JSON.stringify(plan));`
     },
     {
       id: 'bigdata-distributed-systems',
-      title: 'Clusters, Partitions, Replicas and Failure',
+      title: 'Clusters, partitions, replicas and failure',
       objectives: [
         'Split work across partitions for parallel processing',
         'Explain replication and why it exists',
@@ -140,12 +140,12 @@ console.log(JSON.stringify(plan));`
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 5 you computed served, missed and wasted per hour. Now do the same aggregation in parallel across workers, which is the entire idea behind distributed processing.',
-          'Why this matters. One big machine has a ceiling. Many ordinary machines, coordinating correctly, do not. That sentence is the whole reason clusters exist, and the coordination is where all the difficulty lives.',
-          'Partitioning. You split the data into parts and give each part to a worker. Each worker computes a partial answer. Then you combine the partial answers into the final result. Split, compute, combine.',
-          'Replication. You keep more than one copy of each partition, usually on different machines in different zones. If a worker dies, its replica takes over. This is why distributed storage can promise durability that a single disk cannot.',
-          'Mental model: a group exam. One long paper is split into sections. Each student answers one section. Then the answers are stapled together. If a student faints, a second student who has the same section can continue.',
-          'Production insight. Failure is normal at scale, not exceptional. Design for it: assume a worker will die, make each step retryable, and make merging idempotent so a retried partial result does not double-count. Partitioning also decides fairness. If your partition key is skewed, one worker does all the work while the rest wait, and no amount of extra machines helps.'
+          'In lesson 5 you worked out served, missed and wasted per hour. Now we do that same aggregation but split across workers. That\'s basically all distributed processing is.',
+          'One big machine has a ceiling. Lots of ordinary machines working together, if they coordinate, don\'t. That one sentence is why clusters exist, and the coordination is where the hard stuff lives.',
+          'You split the data into parts and hand each part to a worker. Each worker produces a partial answer, then you combine those partials into the final result. Split, compute, combine, that\'s the loop.',
+          'You also keep more than one copy of each partition, usually on different machines in different zones. If a worker dies, its replica picks up. That\'s how distributed storage can promise durability a single disk can\'t.',
+          'It\'s a bit like a group exam. One long paper gets split into sections, each student does one section, then you staple the answers together. If one student faints, another with the same section keeps going.',
+          'At real scale you should assume a worker will die somewhere. Make each step retryable and make the merge idempotent so a retried partial doesn\'t double count. Also watch your partition key, if it\'s skewed one worker does all the work while the rest wait, and adding machines does nothing.'
         ],
         demos: [
           {
@@ -288,13 +288,12 @@ console.log(JSON.stringify(mergeOnce([{ id: 'p1', counts: { a: 1 } }, { id: 'p1'
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 6 you compared who owns the operating system across IaaS and PaaS. That same question decides whether you run Hadoop yourself or use a managed service.',
-          'Why this matters. These names still appear in job descriptions and interviews. Understanding the ideas behind them is what lets you reason about Spark, Athena and Glue later, instead of memorising product names.',
-          'MapReduce in one sentence. Map turns each record into key-value pairs; reduce combines all the values for each key into a result. Word count is the canonical example: map each word to the pair (word, 1), then reduce by summing.',
-          'HDFS and Hadoop. The Google File System paper showed how to store huge files across many ordinary machines with replication and automatic recovery. HDFS is the open-source version. Hadoop combined HDFS with MapReduce so that the computation ran on the same machines that stored the data, avoiding a network bottleneck for every read.',
-          'Mental model: cooking in a huge kitchen. Cut the vegetables in parallel (map), then combine everything per recipe (reduce). Keep the ingredients next to the cooks so nobody walks across the room for every step (data locality).',
-          'Where Spark fits. MapReduce writes intermediate results to disk between every stage, which is slow for multi-step work. Spark keeps intermediate data in memory and exposes a richer set of operations, so iterative and multi-stage jobs finish far faster. The ideas are the same; the execution is smarter.',
-          'Production insight. Running your own Hadoop cluster means owning dozens of machines, upgrades and failure recovery. Most teams now use managed services that bring the same ideas, or they use a managed query engine over object storage for batch analytics. Learn the concepts, and rent the cluster.'
+          'Lesson 6 asked who owns the OS across IaaS and PaaS. Same lens here, do you run Hadoop yourself or let a managed service do it?',
+          'These names still pop up in job ads and interviews, so understanding the ideas matters more than memorizing product pages. Once you get the concepts, Spark and Athena and Glue feel like variations rather than new worlds.',
+          'MapReduce is simple to state. Map turns each record into key-value pairs, reduce combines all values for each key. Word count is the classic, map each word to (word, 1), then reduce by summing.',
+          'The Google File System paper showed how to store huge files across lots of ordinary machines with replication and auto recovery. HDFS is the open source version. Hadoop paired HDFS with MapReduce so computation ran on the same machines that held the data, which avoided pulling everything over the network for every read.',
+          'Think of a big kitchen. Chop veggies in parallel, that\'s map. Combine per recipe, that\'s reduce. Keep ingredients next to the cooks so no one walks across the room for every step, that\'s locality.',
+          'Spark builds on the same ideas but keeps intermediate data in memory instead of writing to disk between every stage. For multi-step or iterative jobs that\'s way faster. And most teams today just rent the cluster, running your own Hadoop means owning upgrades and failure recovery yourself, which is a full time job.'
         ],
         demos: [
           {
@@ -411,7 +410,7 @@ console.log(JSON.stringify(reduceCounts([{ word: 'a', count: 1 }, { word: 'a', c
     },
     {
       id: 'bigdata-batch-vs-stream',
-      title: 'Batch versus Streaming',
+      title: 'Batch versus streaming',
       objectives: [
         'Distinguish batch and stream processing',
         'Choose a mode from a freshness requirement',
@@ -421,12 +420,12 @@ console.log(JSON.stringify(reduceCounts([{ word: 'a', count: 1 }, { word: 'a', c
       timeEstimateMin: 25,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 12 you wrote an allow-list that answers in real time, while Lesson 14 wrote files that are read later. Speed of response is a design choice you have already been making.',
-          'Why this matters. Choosing the wrong processing mode is one of the most expensive mistakes in data engineering. Batch is simple and cheap. Streaming is powerful and much harder to get correct.',
-          'Batch processing collects data over a period, then processes it as a job. It is simple, cheap and easy to re-run if something breaks. Its downside is delay: the answer is only as fresh as the last run.',
-          'Stream processing handles each event as it arrives. It gives answers in seconds and can react immediately, but it must cope with events arriving out of order, arriving twice, and arriving late.',
-          'Mental model: laundry. Batch is a weekly wash: efficient and easy to schedule. Streaming is washing each item the moment it is dirty: immediate, but you need a much more careful process.',
-          'Production insight. The right question is not "can we stream?" but "how many seconds late can this decision be?" A nightly revenue report, a fraud alert, and a learner progress counter have completely different answers, and often the same company uses batch for one and streaming for another.'
+          'Lesson 12 had an allow-list that answers right now, lesson 14 wrote files you read later. That immediacy vs later thing is a design call you\'ve already been making without naming it.',
+          'Picking the wrong mode is expensive. Batch is simple and cheap and easy to rerun. Streaming gets you answers in seconds, but it has to deal with events that arrive late, twice, or out of order. That robustness costs real effort.',
+          'Batch waits and collects data for a while, then runs a job. If something breaks you just rerun it. The catch is the answer is only as fresh as the last run, sometimes that\'s fine, sometimes it\'s not.',
+          'Streaming handles each event as it lands and can react immediately. Great for live features, but you\'re signing up for ordering quirks and duplicate handling from day one.',
+          'Laundry is the usual analogy. Batch is the weekly wash, efficient and easy to schedule. Streaming is washing each item the second it gets dirty, super responsive but you need a tight process or it\'s chaos.',
+          'So don\'t ask can we stream, ask how many seconds late can this decision be. A monthly finance rollup, a fraud alert, and a learners online counter each have a totally different answer, and often the same company does batch for one and streaming for another.'
         ],
         demos: [
           {

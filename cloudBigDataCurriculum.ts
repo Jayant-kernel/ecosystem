@@ -1,4 +1,7 @@
-import { Course } from './types';
+import { Course, Module } from './types';
+import { CLOUD_PRACTICE } from './curriculum/cloud/practice';
+import { LESSON_MODES } from './curriculum/cloud/lessonModes';
+import { LESSON_FLOWS } from './curriculum/cloud/flows';
 import { PHASE_0_MODULE } from './curriculum/cloud/phase0';
 import { PHASE_1_MODULE } from './curriculum/cloud/phase1';
 import { PHASE_2_MODULE } from './curriculum/cloud/phase2';
@@ -50,5 +53,13 @@ export const CLOUD_BIG_DATA_COURSE: Course = {
     PHASE_6_MODULE,
     PHASE_7_MODULE,
     PHASE_8_MODULE
-  ]
+  ].map((module: Module): Module => ({
+    ...module,
+    lessons: module.lessons.map((lesson) => ({
+      ...lesson,
+      mode: LESSON_MODES[lesson.id] ?? 'light',
+      content: { ...lesson.content, flows: LESSON_FLOWS[lesson.id] }
+    })),
+    practice: CLOUD_PRACTICE[module.id]
+  }))
 };

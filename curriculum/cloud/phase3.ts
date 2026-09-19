@@ -10,7 +10,7 @@ export const PHASE_3_MODULE: Module = {
   lessons: [
     {
       id: 'compute-choices',
-      title: 'Compute Choices: EC2, Containers or Lambda?',
+      title: 'Compute choices: EC2, containers or Lambda?',
       objectives: [
         'Describe the three main compute models in plain terms',
         'Match a workload to the right compute model',
@@ -21,12 +21,12 @@ export const PHASE_3_MODULE: Module = {
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 8 you met the taxi-meter model of serverless cost. Now decide whether the taxi, the lease, or the bus is right for the job.',
-          'Why this matters. You can run the same code three ways in the cloud. The wrong choice means either paying for idle machines or fighting limits you did not need.',
-          'The three models. EC2 is a virtual machine you fully control: you choose the operating system and patch it. Containers package your app with its dependencies and run almost anywhere. Lambda runs a single function in response to an event, with no server to manage at all.',
-          'Mental model: transport. EC2 is a car you own and maintain. Containers are a shipping container that fits on many trucks. Lambda is a taxi: you do not own it, you call it when needed, and you pay for the trip.',
-          'The trade-offs. Control decreases and convenience increases as you move from EC2 to containers to Lambda. Lambda scales to zero, so you pay nothing when idle, but it has a maximum run time, a cold start on first use, and a concurrency limit. A long-running job or a stateful service belongs on EC2 or containers.',
-          'Production insight. Real systems mix all three. Serverless for spiky event-driven work, containers for steady APIs, and virtual machines for legacy or very specialised workloads. Choosing per component, rather than per company, is what mature teams do.'
+          'In lesson 8 you met the taxi-meter pricing for serverless. Now the question is which vehicle to hire, the owned car, the shipping container, or the taxi?',
+          'You can run the exact same code three ways in the cloud, and the wrong pick means you\'re paying for idle boxes or banging into limits you didn\'t need to hit.',
+          'EC2 is a virtual machine you fully control, you pick the OS and you patch it. Containers bundle your app with its dependencies so it runs almost anywhere. Lambda just runs one function when an event shows up, no server to manage.',
+          'If transport helps, EC2 is a car you own and maintain. Containers are shipping containers that fit on lots of trucks. Lambda is a taxi you call when you need it and pay per trip. Different convenience, different control.',
+          'That control vs convenience slides as you move from EC2 to containers to Lambda. Lambda scales to zero so you pay nothing idle, but it has a max run time, it cold starts the first time after idle, and it has concurrency limits. Long jobs or stateful services belong on EC2 or containers.',
+          'Most real systems use all three. Serverless for spiky, event-driven bits, containers for steady APIs, virtual machines for legacy or super specialized needs. It\'s usually per-component, not per-company.'
         ],
         demos: [
           {
@@ -129,7 +129,7 @@ console.log('Chosen model: ' + model);`
     },
     {
       id: 'storage-s3',
-      title: 'S3: Object Storage Without Surprises',
+      title: 'S3: object storage without surprises',
       objectives: [
         'Explain buckets, objects, keys and prefixes',
         'Design a date-partitioned key layout',
@@ -140,12 +140,12 @@ console.log('Chosen model: ' + model);`
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 10 you checked whether a policy allowed an action on a resource. An S3 object is that resource. Access control and key design are two halves of the same job.',
-          'Why this matters. S3 is where most cloud data actually lives: logs, backups, datasets, model files, static websites. Getting the key layout right makes everything later cheaper and faster.',
-          'What S3 is. Simple Storage Service stores objects in buckets. An object has a key, which is its full name, and bytes. Slashes in a key create prefixes that look like folders, but there are no real folders. Listing is lexicographic, which is why date-leading keys sort usefully.',
-          'Mental model: a coat check. The bucket is the cloakroom, the key is your ticket number, and the object is your coat. If two people use the same ticket number, the second coat replaces the first. There is no merging.',
-          'Keys are unique and immutable. Writing to an existing key overwrites the object unless versioning is switched on. This is the source of the classic bug where 5000 events per day all write to events/latest.json and 4999 are destroyed.',
-          'Production insight. Design a partitioned layout such as events/year=2026/month=09/day=18/id.json so that analytics engines can read only the files they need. Then add lifecycle rules to move cold data to cheaper storage classes automatically, because a growing lake is a growing bill.'
+          'In lesson 10 you checked if a policy allowed an action on a resource. An S3 object is that resource, so access control and key design go together.',
+          'Most cloud data lives in S3, logs, backups, datasets, model files, static sites. Get the key layout right and everything after it gets cheaper and quicker.',
+          'S3 stores objects in buckets. An object has a key, its full name, and bytes. Slashes in the key make prefixes that look like folders but there are no real folders underneath. And listing is lexicographic, so date-leading keys sort in a useful way.',
+          'Think of a coat check. Bucket is the cloakroom, key is your ticket number, object is your coat. Two people with the same ticket number don\'t get two coats, the second one replaces the first. There\'s no merging.',
+          'Keys are unique and immutable. Writing to a key that already exists overwrites it unless versioning is on. That\'s the classic gotcha where 5,000 events a day all write to events/latest.json and you keep only the last one.',
+          'A solid setup partitions by date, something like events/year=2026/month=09/day=18/id.json, so analytics can read just the slice it needs. Then you add lifecycle rules to shift cold data to cheaper storage automatically, otherwise a growing lake turns into a growing bill.'
         ],
         demos: [
           {
@@ -244,7 +244,7 @@ const key = 'events/year=2026/month=09/day=18/' + eventId + '.json';
     },
     {
       id: 'storage-object-block-file',
-      title: 'Storage Choices: Object, Block and File',
+      title: 'Storage choices: object, block and file',
       objectives: [
         'Distinguish object, block and file storage',
         'Match a workload to S3, EBS or EFS',
@@ -254,12 +254,12 @@ const key = 'events/year=2026/month=09/day=18/' + eventId + '.json';
       timeEstimateMin: 25,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 4 you described data as tables and files. The storage type you choose decides which of those shapes the system can serve efficiently.',
-          'Why this matters. People reach for S3 for everything because it is cheap and durable. But a database cannot run on object storage, and a shared folder across ten servers cannot run on a block device. Choosing wrongly creates problems that look like performance bugs.',
-          'The three types. Object storage (S3) stores whole files addressed by key over HTTP, effectively unlimited and very durable. Block storage (EBS) is a virtual disk attached to one machine, with low latency and a filesystem. File storage (EFS) is a shared network filesystem that many machines can mount at once.',
-          'Mental model: a warehouse, a desk drawer, and a shared filing cabinet. The warehouse (object) is vast and you fetch whole boxes. The desk drawer (block) is fast and only yours. The filing cabinet (file) is shared and everyone follows the same index.',
-          'The rules that matter. Object storage is not a filesystem, so it does not support partial in-place edits of large files. Block storage attaches to one instance at a time. Shared, multi-instance file access is what file storage is for.',
-          'Production insight. A common pattern is all three at once: EBS for the operating system and database, EFS for a shared application directory across a cluster, and S3 for backups, logs and datasets. Match the storage to the access pattern, not to fashion.'
+          'Lesson 4 framed data as tables and files. Which storage type you pick decides which of those shapes the system can actually serve well.',
+          'It\'s tempting to use S3 for everything because it\'s cheap and durable, but a database can\'t really run on object storage, and a block device can\'t be safely shared by ten servers as a folder. The wrong match looks like a perf bug when it\'s really a category error.',
+          'Object storage like S3 holds whole files addressed by key over HTTP, basically unlimited and very durable. Block storage like EBS is a virtual disk attached to one machine, low latency with a real filesystem. File storage like EFS is a shared network filesystem lots of machines can mount at once.',
+          'Warehouse, desk drawer, filing cabinet, if that helps. Warehouse is the object store, you fetch whole boxes. Desk drawer is block, fast and private to one person. Filing cabinet is file, shared and everyone uses the same index.',
+          'A couple rules that matter a lot. Object storage isn\'t a filesystem, you can\'t do partial in-place edits of huge files. Block volumes attach to one instance at a time. And when you need shared, multi-instance file access, that\'s exactly what file storage is for.',
+          'You\'ll often see all three at once. EBS for the OS and database, EFS for a shared app directory across the cluster, S3 for backups, logs and datasets. Match storage to the access pattern, not to what\'s trendy.'
         ],
         demos: [
           {
@@ -361,7 +361,7 @@ console.log('Primary data on block storage, backups on object storage.');`
     },
     {
       id: 'database-choices',
-      title: 'Database Choices: SQL, NoSQL and Cache',
+      title: 'Database choices: SQL, NoSQL and cache',
       objectives: [
         'Distinguish relational, key-value and cache stores by access pattern',
         'Explain why access pattern comes before technology',
@@ -371,12 +371,12 @@ console.log('Primary data on block storage, backups on object storage.');`
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 4 you wrote GROUP BY over rows. Relational databases exist to make those questions fast and safe, which is exactly why the shape of your questions decides the database you pick.',
-          'Why this matters. Database arguments are usually religious rather than technical. You can settle them by asking one question: what access pattern do I actually need, at what scale?',
-          'The families. Relational databases organise data in tables with relationships, supporting joins and multi-row transactions. Key-value and document stores retrieve items by key with predictable performance at very large scale. Caches hold hot data in memory for microsecond reads.',
-          'Mental model: a library, a coat check, and a sticky note. The library (relational) supports rich search across related material. The coat check (key-value) is unbeatable when you know the ticket number. The sticky note (cache) holds the few things you need constantly.',
-          'The trade-off is flexibility versus scale. Relational gives you ad hoc queries and strong consistency but gets harder to scale horizontally. Key-value scales almost linearly but only answers the questions you designed the keys for.',
-          'Production insight. Most real products use several stores at once, which is called polyglot persistence: a relational database for accounts and billing, a key-value store for high-volume application state, and a cache in front of both. Choose per access pattern, and expect to use more than one.'
+          'In lesson 4 you grouped rows with GROUP BY. Relational databases exist to make those questions fast and safe, and the shape of your questions should decide which database you pick.',
+          'Database debates usually sound religious. You can cut through it by asking one thing, what access pattern do you actually need at what scale? Answer that, the tech follows.',
+          'Relational stores keep data in tables with relationships, they\'re great for joins and multi-row transactions. Key-value and document stores fetch by key with predictable performance even at huge scale. Caches sit in memory and give you microsecond reads for hot data.',
+          'Library, coat check, sticky note, if you want an image. Relational is the library that supports rich searches across related stuff. Key-value is the coat check, unbeatable when you know the ticket number. Cache is the sticky note with the few things you touch constantly.',
+          'There\'s a trade-off between flexibility and scale. Relational lets you ask ad hoc questions and gives strong consistency, but it\'s harder to spread across machines. Key-value scales almost linearly, yet it only answers the questions you designed the keys for.',
+          'Most real products run a few of them together, polyglot persistence. A relational DB for accounts and billing, a key-value store for high-volume app state, and a cache in front. Pick per access pattern and expect more than one answer.'
         ],
         demos: [
           {
@@ -477,7 +477,7 @@ console.log(JSON.stringify(plan));`
     },
     {
       id: 'database-dynamodb',
-      title: 'DynamoDB: Keys, Queries and Hot Partitions',
+      title: 'DynamoDB: keys, queries and hot partitions',
       objectives: [
         'Model a table from an access pattern using partition and sort keys',
         'Explain why Scan is expensive and Query is preferred',
@@ -488,12 +488,12 @@ console.log(JSON.stringify(plan));`
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 13 you matched a workload to compute. Now match a query to a key. Both are access-pattern decisions.',
-          'Why this matters. DynamoDB gives predictable performance at enormous scale, but only if your keys match your questions. Design badly and you get throttling under load; design well and it stays fast no matter how large the table grows.',
-          'The model. Every item needs a partition key. A sort key is optional and lets you store many related items under one partition and query a range within it. You design the table from the questions you will ask, not from a normalised diagram.',
-          'Mental model: a set of pigeonholes. The partition key chooses the hole; the sort key orders what is inside. If everyone\u2019s mail goes into one hole, that hole becomes a queue and the post office throttles you. That is a hot partition.',
-          'Query versus Scan. Query reads one partition using the key, which is fast and cheap. Scan reads the entire table, which is slow and expensive and gets worse every day. A key-value store cannot answer a question you did not design a key or index for.',
-          'Production insight. DynamoDB keys are case-sensitive, so USER#42 and user#42 are different partitions. Queries return at most a page of results at a time and must be paged. And when you retry a write, use a conditional expression so you do not double-apply it. Idempotency starts here.'
+          'You matched workloads to compute in lesson 13. Now you match queries to keys. Same mindset, just applied to data.',
+          'DynamoDB is lovely when your keys line up with your questions, it stays fast at crazy scale. Get the keys wrong and you\'ll hit throttling. It\'s that binary.',
+          'Every item needs a partition key. A sort key is optional and lets you keep many related items under one partition and query a range inside it. You design the table from the questions you\'ll actually ask, not from a textbook ER diagram.',
+          'Picture pigeonholes. The partition key picks the hole, the sort key orders what\'s inside. If everyone\'s mail goes into one hole, that hole becomes a queue and you get throttled. That\'s a hot partition.',
+          'Query reads one partition using the key, it\'s fast and cheap. Scan reads the whole table, slow and expensive and it gets worse every day. A key-value store simply can\'t answer a question you didn\'t design a key or index for, don\'t fight it.',
+          'A few things you\'ll bump into in practice. Keys are case-sensitive, so USER#42 and user#42 are different partitions, oops. Queries come back one page at a time and you have to page. And if you retry writes, use a conditional expression so you don\'t apply the same one twice. Idempotency starts here.'
         ],
         demos: [
           {
@@ -602,7 +602,7 @@ console.log('Match found: ' + (stored.pk === query.ExpressionAttributeValues[':p
     },
     {
       id: 'project-serverless-api',
-      title: 'Project 1: The Serverless Progress API',
+      title: 'Project 1: the serverless progress API',
       objectives: [
         'Explain the Lambda handler model and the response shape',
         'Handle malformed input and return correct status codes',
@@ -613,13 +613,13 @@ console.log('Match found: ' + (stored.pk === query.ExpressionAttributeValues[':p
       timeEstimateMin: 45,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 11 you redacted sensitive fields before logging. A production API does the same thing on every request, before anything is stored.',
-          'Why this matters. This project is the standard serverless building block used by thousands of real products. It is also your first REAL CLOUD LAB, so you will meet the failure modes live: a missing permission, a timeout, a malformed body.',
-          'The request path. The client calls an HTTPS endpoint on API Gateway. API Gateway maps the method and path to a Lambda function. Lambda runs your handler, reads or writes DynamoDB using its execution role, and returns a response object. The client never touches the database directly.',
-          'The handler. A Lambda handler receives an event and a context. Whatever object you return becomes the response. For an HTTP API you return statusCode, headers and a body that must be a string, which is why you call JSON.stringify on it.',
-          'Mental model: a drive-through window. API Gateway is the window, the handler is the person working it, the execution role is their badge, and DynamoDB is the storeroom. The customer never walks into the storeroom.',
-          'Cold starts and limits. On the first invocation after idle time the runtime must initialise, which adds latency. Create clients outside the handler so they are reused between invocations. Remember the maximum run time, the concurrency limit, and that the execution role decides exactly what the function may touch.',
-          'Production insight. Validate input and return 400 for a bad request, never a 500. Use a conditional write so a retried request does not double-apply. Log identifiers and outcomes, never tokens or personal data. If you can do all four, this small API is genuinely production-shaped.'
+          'You redacted sensitive fields before logging in lesson 11. A production API does essentially that on every request before it stores anything.',
+          'This project is the standard serverless brick that thousands of products use. It\'s also your first real cloud lab, so you\'ll meet the classic failure modes live, missing permissions, timeouts, malformed bodies.',
+          'The path goes like this. Client hits an HTTPS endpoint on API Gateway, Gateway maps method and path to a Lambda, Lambda runs your handler, talks to DynamoDB with its execution role, and returns a response. The client never touches the database directly.',
+          'The handler itself gets an event and a context. Whatever object you return becomes the HTTP response, so for an HTTP API you return statusCode, headers and a body that has to be a string. That\'s why you JSON.stringify the body.',
+          'Imagine a drive-through. API Gateway is the window, the handler is the person working it, the execution role is their badge, DynamoDB is the storeroom out back. The customer never walks into the storeroom.',
+          'Two quirks to know. The first call after idle has to spin up the runtime, that\'s the cold start and it adds latency. Create clients outside the handler so they get reused. And remember the max run time, the concurrency limit, and that the execution role decides exactly what you can touch.',
+          'If you can validate input and return 400 for bad requests instead of 500, use a conditional write so retries don\'t double apply, and log identifiers not secrets, this little API is already shaped like a production one. Which is the point.'
         ],
         demos: [
           {

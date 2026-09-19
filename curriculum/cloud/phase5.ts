@@ -10,7 +10,7 @@ export const PHASE_5_MODULE: Module = {
   lessons: [
     {
       id: 'data-formats-schema',
-      title: 'CSV, JSON, Parquet, Avro and Schema',
+      title: 'CSV, JSON, Parquet, Avro and schema',
       objectives: [
         'Explain row-oriented versus columnar storage',
         'Estimate query cost from the format and the columns selected',
@@ -20,12 +20,12 @@ export const PHASE_5_MODULE: Module = {
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 4 you described tables, files and rows. The file format is the physical shape of those rows on disk, and it decides what a query engine must read.',
-          'Why this matters. The same dataset stored as CSV can cost ten times more to query than the same data in Parquet. Format is not a detail; it is a cost and performance decision.',
-          'The formats. CSV is text rows separated by commas: human-readable, no types, no nested data. JSON is text with names, nesting and types: flexible, but repetitive and bulky. Parquet is a binary columnar format that stores values by column and compresses them. Avro is row-oriented and designed for streaming records with a schema that evolves.',
-          'Mental model: a filing cabinet versus a set of index cards per attribute. A row-oriented file stores one complete record at a time, like a card. A columnar file stores all the values of one field together, like a column of a spreadsheet. Analytics usually reads a few columns across many rows, so columnar wins enormously.',
-          'Schema is the contract. It names the fields and their types. Without enforcement, a CSV with a missing column silently produces wrong numbers. With a schema, the engine refuses to guess. This is why catalogs exist, which you will meet in two lessons.',
-          'Production insight. The modern default is: land raw data as-is, then convert to Parquet partitioned by date for analytics. You keep the raw zone for replay and audit, and you query the compact columnar copy for speed and cost.'
+          'Back in lesson 4 you described tables and rows. The file format is just the physical shape of those rows on disk, and it decides what a query engine has to read.',
+          'Same dataset as CSV can cost ten times more to query than Parquet. Format isn\'t a footnote, it\'s a pricing decision, so it\'s worth understanding properly.',
+          'CSV is text rows separated by commas, readable but no types and no nesting. JSON is text with names and nesting, flexible but repetitive and chunky. Parquet is a binary columnar format that stores values by column and compresses them hard. Avro is row-oriented and built for streaming records where the schema needs to evolve.',
+          'A quick picture, row-oriented files store one complete record at a time, like an index card. Columnar files store all values of one field together, like peeling a column out of a spreadsheet. Analytics usually reads a few columns across millions of rows, so columnar wins by a huge margin.',
+          'Schema is your contract, it names fields and pins down types. Without it a missing column in a CSV just gives you wrong numbers and no warning. With a schema the engine refuses to guess, that\'s why catalogs exist, you\'ll see those in a couple lessons.',
+          'A common pattern these days is land raw data exactly as it arrived, then convert to Parquet partitioned by date for analytics. You keep the raw zone for replay and audit, and you query the compact copy because it\'s faster and cheaper.'
         ],
         demos: [
           {
@@ -128,7 +128,7 @@ console.log('Columns and values line up.');`
     },
     {
       id: 'data-lake-design',
-      title: 'S3 Data Lake Design',
+      title: 'S3 data lake design',
       objectives: [
         'Design raw, clean and curated zones',
         'Explain why the same data is stored more than once',
@@ -138,12 +138,12 @@ console.log('Columns and values line up.');`
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 14 you built a partitioned key. A data lake is that same idea applied to an entire organisation.',
-          'Why this matters. A data lake that is not organised becomes a swamp: nobody knows what is current, what is clean, or who owns it. The zones pattern is the cheapest fix that exists.',
-          'The zones. The raw zone holds data exactly as it arrived, untouched, for replay and audit. The clean zone holds validated, deduplicated, correctly typed data. The curated zone holds business-ready tables that analysts can query without asking anyone.',
-          'Why keep the raw copy. Because pipelines have bugs. If you only store the cleaned output and find a bug in the cleaning step, you must ask the source for the data again, which may be impossible. The raw zone makes reprocessing possible.',
-          'Mental model: a kitchen. Deliveries arrive at the loading bay (raw). Ingredients are washed and cut (clean). Finished dishes go to the pass (curated). You never wash vegetables straight into the customer\u2019s plate.',
-          'Production insight. Good lake design adds three more things: a catalog so the tables are discoverable, a lifecycle policy so old data moves to cheaper storage, and a naming convention that becomes a documented standard. The naming convention matters more than people expect, because it is what stops the swamp.'
+          'In lesson 14 you built a partitioned key. A data lake is that same habit applied across an entire org, not just one feature.',
+          'Without organization a lake turns into a swamp pretty fast. Nobody knows what\'s current, what\'s clean, or who owns it. The zones pattern is the simplest fix that actually works.',
+          'Raw holds data exactly as it arrived, untouched, for replay and audit. Clean holds validated, deduped, correctly typed data. Curated is the business-ready table that analysts can query without chasing anyone for help.',
+          'You keep the raw copy because pipelines have bugs. If you only store the cleaned output and later find a bug in the cleaning, you\'d have to ask the source for the data again and it might be gone. Raw makes reprocessing possible.',
+          'Kitchen might help, deliveries hit the loading bay, that\'s raw. Ingredients get washed and chopped, that\'s clean. Finished plates go to the pass, that\'s curated. You don\'t wash veg straight onto a customer\'s plate.',
+          'A few extras make a lake hold up. Add a catalog so tables are findable, a lifecycle rule so old data slips to cheaper storage, and a naming convention that\'s actually written down. That naming doc matters more than people expect, it\'s what keeps the swamp away.'
         ],
         demos: [
           {
@@ -160,7 +160,7 @@ console.log(lakeKey('raw', ts, 'batch-001'));
 console.log(lakeKey('clean', ts, 'batch-001'));
 console.log(lakeKey('curated', ts, 'lesson_completions'));
 
-// Same event, three stages of trust.
+ // Same event, three stages of trust.
 console.log('raw = as received | clean = validated | curated = business ready');`,
             explainByLine: true
           }
@@ -209,7 +209,7 @@ console.log(lakeKey('clean', date, 'daily-export'));
             tests: [
               `lakeKey('raw', new Date('2026-09-18T10:00:00Z'), 'e1') === 'raw/year=2026/month=09/day=18/e1.parquet'`,
               `lakeKey('curated', new Date('2027-01-02T00:00:00Z'), 'x') === 'curated/year=2027/month=01/day=02/x.parquet'`,
-              `lakeKey('raw', new Date('2026-09-18T00:00:00Z'), 'e1') !== lakeKey('clean', new Date('2026-09-18T00:00:00Z'), 'e1')`,
+              `lakeKey('raw', new Date('2026-09-18T10:00:00Z'), 'e1') !== lakeKey('clean', new Date('2026-09-18T00:00:00Z'), 'e1')`,
               `lakeKey('raw', new Date('2026-12-31T00:00:00Z'), 'e1').indexOf('month=12') !== -1`
             ]
           }
@@ -245,7 +245,7 @@ console.log(lakeKey('clean', date, 'daily-export'));
     },
     {
       id: 'data-glue-athena',
-      title: 'Glue Catalog and Athena SQL (the SQL Bridge)',
+      title: 'Glue catalog and Athena SQL (the SQL bridge)',
       objectives: [
         'Bridge basic SQL to analytical SQL step by step',
         'Use GROUP BY, HAVING and partition filters together',
@@ -256,13 +256,13 @@ console.log(lakeKey('clean', date, 'daily-export'));
       timeEstimateMin: 40,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 4 you wrote SELECT, WHERE and GROUP BY over a tiny array. This lesson is that same ladder, climbed one rung at a time until it reaches analytical SQL. Nothing new is happening; we are only adding rungs.',
-          'Rung one, filter. SELECT lessonId, completed FROM learner_events WHERE completed = true. This you already know.',
-          'Rung two, aggregate. Add GROUP BY lessonId and COUNT. Now each row of output is a group, not a record. WHERE filters records before grouping.',
-          'Rung three, filter the groups. HAVING COUNT(*) >= 5 filters after grouping. This is the single most common confusion in analytical SQL: WHERE filters rows, HAVING filters groups.',
-          'Rung four, prune the files. Add year = and month = filters on partition columns. The engine reads only matching folders, so the query touches a fraction of the data and costs a fraction of the price.',
-          'The catalog. A catalog is a table of tables: it stores the schema and the partition layout so the query engine knows where the data is and what type each column has. A crawler inspects your files and writes that metadata automatically.',
-          'Production insight. Athena bills by data scanned, so partitioning plus columnar Parquet is the entire cost strategy. A query that scans one day instead of two years can cost hundreds of times less for exactly the same answer.'
+          'In lesson 4 you wrote SELECT, WHERE and GROUP BY over a tiny array. This is that same ladder, just with more rungs until it reaches analytical SQL. Nothing magical, just incremental.',
+          'First rung, filter some rows. SELECT lessonId, completed FROM learner_events WHERE completed = true. You\'ve done this already.',
+          'Next, aggregate. Add GROUP BY lessonId and COUNT. Now each output row is a group, not a record. WHERE still filters records before they get grouped.',
+          'Then filter the groups. HAVING COUNT(*) >= 5 filters after grouping, and this is where people trip. WHERE limits rows, HAVING limits groups. Different moments, different purposes.',
+          'Now prune files. Add filters on the partition columns, year = and month =. The engine only reads the matching folders, so you scan a fraction of the data and pay a fraction of the price.',
+          'The catalog is basically a table of tables. It stores the schema and the partition layout so the engine knows where data lives and what types each column has. A crawler can walk your files and fill that in automatically.',
+          'Athena bills by data scanned, so partitioning plus Parquet is the whole cost story. Scanning one day instead of two years can be hundreds of times cheaper for the same answer, that\'s why those earlier design choices matter.'
         ],
         demos: [
           {
@@ -365,7 +365,7 @@ WHERE year = '2026'
     },
     {
       id: 'data-etl-pipeline',
-      title: 'ETL: Clean, Validate, Transform, Publish',
+      title: 'ETL: clean, validate, transform, publish',
       objectives: [
         'Separate cleaning, validation and transformation into steps',
         'Produce an analytics-ready record from a raw record',
@@ -375,12 +375,12 @@ WHERE year = '2026'
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 4 you dropped malformed rows. That was ETL\u2019s cleaning step, performed by hand. Now we name the steps and separate them so each can be tested.',
-          'Why this matters. A pipeline is code that runs unattended at 2am. If the steps are tangled together, a single bad record can corrupt an entire day of analytics before anyone notices.',
-          'The four steps. Clean removes malformed and duplicate records. Validate checks that each field has the right type and range. Transform reshapes data into the form analytics needs. Publish writes it to the clean or curated zone in a queryable format.',
-          'Mental model: an airport. Check-in removes people who should not be travelling (clean). Security verifies them (validate). The gate arranges them by flight (transform). The plane takes them where they belong (publish).',
-          'Why idempotent publishing matters. Pipelines fail and get re-run. If publishing appends instead of overwriting, a re-run double-counts every row. Write to a deterministic partition and overwrite it, so running the job twice produces the same result as running it once.',
-          'Production insight. The three habits that separate a reliable pipeline from a fragile script: validate before publishing so bad data fails loudly, write to immutable partitioned outputs so re-runs are safe, and log counts in and counts out so a silent drop of 90 percent of rows is visible immediately.'
+          'You already dropped bad rows in lesson 4. That was the cleaning step, just without the label. Now we split the work so each piece can be tested on its own.',
+          'A pipeline runs unattended at 2am, so keeping steps tangled is risky. One bad record can silently mess up a whole day\'s analytics before anyone notices.',
+          'There are four moves. Clean throws out malformed or duplicate records. Validate checks types and ranges on what\'s left. Transform reshapes it into the form analytics wants. Publish writes it to the clean or curated zone in a queryable format.',
+          'An airport isn\'t a bad image. Check-in turns away people who shouldn\'t travel, that\'s clean. Security checks them, that\'s validate. The gate groups them by flight, that\'s transform. The plane takes them where they belong, that\'s publish.',
+          'Publishing has to be idempotent. Pipelines fail and get retried, and if publish just appends, a rerun double counts every row. Write to a deterministic partition and overwrite it instead, then running twice looks the same as running once.',
+          'Three small habits make pipelines reliable. Validate before you publish so bad data fails loudly, publish to immutable partitioned outputs so reruns stay safe, and log counts in versus counts out so a sudden 90 percent drop jumps out straight away.'
         ],
         demos: [
           {
@@ -512,7 +512,7 @@ console.log('Rows after two runs: ' + store['year=2026/month=09/day=18'].length)
     },
     {
       id: 'data-warehouse-lakehouse',
-      title: 'Warehouses, Lakehouses and Iceberg',
+      title: 'Warehouses, lakehouses and Iceberg',
       objectives: [
         'Distinguish a data warehouse from a data lake',
         'Explain what a lakehouse adds',
@@ -522,13 +522,13 @@ console.log('Rows after two runs: ' + store['year=2026/month=09/day=18'].length)
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 16 you chose a database from an access pattern. A warehouse is a database chosen for a different access pattern: large aggregations and many concurrent analysts.',
-          'Why this matters. Teams often argue about lake versus warehouse as if one must win. The real answer is that they solve different problems, and modern lakehouses blur the boundary on purpose.',
-          'The data warehouse stores structured, modelled data for fast SQL over large aggregations, tuned for many concurrent users and dashboards. It is where business reporting lives. It is relatively expensive and prefers data that has already been cleaned.',
-          'The data lake stores everything in open formats on object storage, cheaply and flexibly. It is excellent for raw data, machine learning and reprocessing. Historically it lacked transactions, so concurrent updates and schema changes were painful.',
-          'The lakehouse adds a table layer on top of the lake, such as Apache Iceberg, which brings transactions, schema evolution and time travel to files in object storage. You get warehouse-like reliability without copying the data into a separate system.',
-          'Mental model: a warehouse, a storage yard, and a yard with proper shelving. The warehouse is organised and fast to pick from. The yard is cheap and holds anything. Shelving with labels and inventory tracking turns the yard into something nearly as usable as the warehouse.',
-          'Production insight. Choose by requirement: heavy concurrent BI and dashboards suit a warehouse; raw storage, ML and replay suit a lake; evolving schemas and open formats with transactional reliability suit a lakehouse. Many organisations run more than one on purpose.'
+          'In lesson 16 you picked a database by its access pattern. A warehouse is the same call, just for a different workload, big aggregations and lots of analysts at once.',
+          'People like to argue lake vs warehouse as if one has to win. They solve different problems, and the newer lakehouse idea deliberately blurs the line.',
+          'A warehouse keeps structured, modeled data tuned for fast SQL over large aggregations and high concurrency, that\'s where dashboards and BI live. It\'s more expensive and it expects data that\'s already been cleaned.',
+          'A lake keeps everything in open formats on object storage, cheap and flexible. It\'s great for raw data and ML and replay, but for a long time it didn\'t have transactions, so concurrent updates and schema changes were a headache.',
+          'A lakehouse puts a table layer, like Apache Iceberg, on top of the lake. You get transactions, schema evolution and time travel over files in object storage, so you get warehouse-like reliability without copying everything into a separate system.',
+          'Warehouse, storage yard, yard with proper shelving, if you want it visual. The warehouse is tidy and fast to pick from. The yard holds anything cheaply. Add shelving with labels and inventory tracking and the yard starts to feel almost like the warehouse.',
+          'Pick by need. Heavy concurrent BI and dashboards lean warehouse. Raw storage with ML and replay leans lake. Evolving schemas with open formats but you still want transactions leans lakehouse. Lots of shops run more than one on purpose, and that\'s fine.'
         ],
         demos: [
           {
@@ -629,7 +629,7 @@ console.log(JSON.stringify(solution));
     },
     {
       id: 'project-data-lake',
-      title: 'Project 2: The Learning-Events Data Lake',
+      title: 'Project 2: the learning-events data lake',
       objectives: [
         'Assemble raw, clean and curated zones end to end',
         'Catalog and query the lake with SQL',
@@ -639,12 +639,12 @@ console.log(JSON.stringify(solution));
       timeEstimateMin: 50,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 8 you compared the cost of two capacity plans. Now compare the cost of two query plans.',
-          'Why this matters. This is the single most common data engineering task in the industry. If you can build this pipeline and explain why each piece exists, you can hold a conversation about almost any analytics stack.',
-          'The pipeline. Events land in the raw zone exactly as received. A job cleans and validates them into the clean zone as Parquet partitioned by date. A curated table aggregates completions per lesson per day. A crawler registers the schema in the catalog, and Athena queries it with SQL.',
-          'The cost story. Querying two years of unpartitioned CSV might scan terabytes. Querying one month of partitioned Parquet scans a tiny fraction. Multiply the scan size by the price per terabyte and the difference is the business case for the whole design.',
-          'The failure story. If the job fails halfway, the deterministic partition means you simply run it again. If a record is malformed, it is dropped in cleaning and counted in the logs, so you can see the drop without losing the rest.',
-          'Production insight. A lake project is not finished until it has four things: a documented key layout, a catalog entry, a cost comparison, and a re-run procedure. The cost comparison is what convinces people the design was worth it, and the re-run procedure is what saves you at 3am.'
+          'Lesson 8 had you price two capacity plans. Now let\'s price two query plans instead, same instinct, different layer.',
+          'This is one of the most common data engineering tasks out there. If you can build this pipeline and say why each piece exists, you can talk about almost any analytics stack without bluffing.',
+          'Events land in raw exactly as received. A job cleans and validates them into clean as Parquet partitioned by date. A curated table rolls up completions per lesson per day. A crawler registers everything in the catalog, and Athena queries it with SQL. Pretty linear when you see it end to end.',
+          'The cost angle is striking. Scanning two years of unpartitioned CSV might read terabytes, while one month of partitioned Parquet reads a tiny sliver. Multiply that scanned size by the price per terabyte and you have the business case for the whole design.',
+          'And the failure story is calmer too. If the job dies halfway, the deterministic partition lets you just run it again. Bad rows get dropped during cleaning and they show up in your counts, so you can see the drop without losing the rest.',
+          'A lake project isn\'t really done until you have a documented key layout, a catalog entry, a before and after cost comparison, and a rerun procedure you\'ve actually tried. The cost comparison convinces people it was worth it, the rerun is what saves you at 3am.'
         ],
         demos: [
           {

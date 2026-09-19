@@ -7,11 +7,6 @@ const Footer: React.FC = () => {
                 <div className="grid lg:grid-cols-12 gap-16 mb-24">
                     {/* Brand Column */}
                     <div className="lg:col-span-5 flex flex-col">
-                        <div className="flex items-center space-x-3 mb-10 opacity-90 hover:opacity-100 transition-opacity duration-500">
-                            <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                                <i className="fas fa-headset text-orange-500 text-xl"></i>
-                            </div>
-                        </div>
                         <h3 className="text-5xl font-medium text-white tracking-tighter font-manrope mb-4">Eco<span className="text-zinc-600">system</span></h3>
                         <p className="text-zinc-500 text-sm font-sans max-w-xs">
                             The conversational coding companion for the next generation of developers.

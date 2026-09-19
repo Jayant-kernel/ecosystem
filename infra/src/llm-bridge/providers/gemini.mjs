@@ -18,11 +18,12 @@ const toGeminiContents = (history, transcript) => [
   { role: 'user', parts: [{ text: transcript }] },
 ];
 
-const functionDeclarations = TOOLS.map((tool) => ({
-  name: tool.name,
-  description: tool.description,
-  parameters: tool.parameters,
-}));
+const functionDeclarationsFor = (tools) =>
+  tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters,
+  }));
 
 function textOf(response) {
   try {
@@ -45,7 +46,7 @@ function callsOf(response) {
   return parts.filter((part) => part.functionCall).map((part) => part.functionCall);
 }
 
-async function callGemini(ai, { model, contents, system }) {
+async function callGemini(ai, { model, contents, system, functionDeclarations }) {
   try {
     return await ai.models.generateContent({
       model,
@@ -83,14 +84,15 @@ export function createGeminiProvider(env = process.env, deps = {}) {
   return {
     name: 'gemini',
 
-    async generateTutorResponse({ system, transcript, history = [], context = {}, modelId } = {}) {
+    async generateTutorResponse({ system, transcript, history = [], context = {}, modelId, tools = TOOLS } = {}) {
       const model = modelId || defaultModelId;
+      const functionDeclarations = functionDeclarationsFor(tools);
       const contents = toGeminiContents(history, transcript);
       const toolCalls = [];
       let text = '';
 
       for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-        const response = await callGemini(getClient(), { model, contents, system });
+        const response = await callGemini(getClient(), { model, contents, system, functionDeclarations });
 
         const turnText = textOf(response);
         if (turnText) text += text ? `\n${turnText}` : turnText;

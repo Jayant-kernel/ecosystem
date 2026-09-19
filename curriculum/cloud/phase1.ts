@@ -11,7 +11,7 @@ export const PHASE_1_MODULE: Module = {
   lessons: [
     {
       id: 'cloud-why-exists',
-      title: 'Why Cloud Exists: Renting Instead of Buying',
+      title: 'Why cloud exists: renting instead of buying',
       objectives: [
         'Explain the capacity problem that cloud computing solves',
         'Describe on-demand, pay-as-you-go and elasticity in plain terms',
@@ -22,12 +22,12 @@ export const PHASE_1_MODULE: Module = {
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 3 you read a value from an environment variable. We do that again now, because every cloud workload is sized by a configuration value you can change without editing code.',
-          'Why this matters. Imagine your app is popular from 6pm to 9pm and quiet at 4am. If you buy servers for the busy hours, they sit idle and wasted for the rest of the day. If you buy for the average, the evening traffic gets errors. This is the capacity problem, and it has no good answer with hardware you own.',
-          'What cloud computing is. Instead of buying machines, you rent them by the second from a provider. You pay for what you use, you can add or remove capacity in minutes, and someone else owns the building, the power and the repairs.',
-          'Mental model: the electricity utility. A factory could run its own generator and size it for its busiest day, which wastes fuel the other 364 days. Or it can plug into the grid and pay for the kilowatts it actually draws. Cloud is the grid for computing.',
-          'Elasticity is the key property. Capacity follows demand automatically. Over-provisioning wastes money; under-provisioning breaks the product. Elasticity lets you be roughly right and adjust, instead of being exactly wrong forever.',
-          'Production insight. Mature teams mix pricing models to match the shape of the demand: pay-as-you-go for spiky work, reserved or savings plans for the steady baseline, and spot capacity for interruptible batch jobs. The engineering skill is knowing which part of your load is steady and which part is spiky.'
+          'Quick recap. In lesson 3 you pulled a value from an environment variable. We\'re doing that again here, because every cloud workload is really sized by some config value you can tweak without touching code.',
+          'Picture your app busy from 6pm to 9pm and dead quiet at 4am. Buy servers for the evening peak and they\'ll sit idle most of the day. Buy for the average and users get errors when it matters. That\'s the capacity problem, and with hardware you own there isn\'t a clean answer.',
+          'Cloud just lets you rent machines by the second instead of buying them. You pay for what you actually use, you can add or drop capacity in minutes, and someone else handles the building, power and repairs.',
+          'It\'s a lot like electricity. A factory could run its own generator sized for its busiest day and waste fuel the rest of the year. Or it plugs into the grid and pays for the kilowatts it actually draws. Cloud is the grid for computing. Pretty boring analogy, but it sticks.',
+          'Elasticity is the clever bit. Capacity follows demand instead of sitting fixed. Over-provisioning burns money, under-provisioning breaks things. With elasticity you can be roughly right and nudge it, instead of being exactly wrong forever.',
+          'You\'ll often see teams mix payment styles to fit the demand shape. Spiky, unpredictable work stays pay-as-you-go. The steady baseline goes on reserved or savings plans for the discount. Interruptible batch jobs jump on spot capacity. The knack is figuring out what\'s steady and what\'s spiky in your workload.'
         ],
         demos: [
           {
@@ -147,7 +147,7 @@ console.log('Elastic burst needed at peak: ' + burstCapacity);
     },
     {
       id: 'cloud-service-models',
-      title: 'IaaS, PaaS, SaaS and Shared Responsibility',
+      title: 'IaaS, PaaS, SaaS and shared responsibility',
       objectives: [
         'Distinguish IaaS, PaaS and SaaS by how much you manage',
         'Apply the shared responsibility model to real services',
@@ -157,12 +157,12 @@ console.log('Elastic burst needed at peak: ' + burstCapacity);
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 2 you wrote isRetryable to decide whether calling again makes sense. Now use that instinct to ask a different ownership question: when something breaks, who is responsible for fixing it?',
-          'Why this matters. The same app can be built three ways on the same cloud. The choice changes how much you operate, how much you pay, and how much control you have. Choosing wrongly means either doing unnecessary work or losing required control.',
-          'Mental model: dinner. IaaS is renting a kitchen and buying your own ingredients. PaaS is a meal-kit delivered with the recipe. SaaS is ordering takeaway. Each step removes work and control at the same time.',
-          'What the terms mean. Infrastructure as a Service gives you virtual machines, storage and networks; you patch the operating system and everything above it. Platform as a Service gives you a runtime that runs your code; the provider patches the operating system and runtime. Software as a Service is finished software you log into.',
-          'Shared responsibility. This is the part beginners get wrong. The provider is responsible for security OF the cloud: the buildings, hardware, network and the managed service itself. You are responsible for security IN the cloud: your data, your access rules, your configuration. Moving to PaaS or SaaS shrinks your share but never removes it.',
-          'Production insight. You always own your data, your identities and your access decisions. A database provider will not decide who may read your customer table. That is why IAM and encryption are your job in every model, including SaaS.'
+          'You already wrote isRetryable in lesson 2, that call-again judgment. Now we use a similar instinct but for ownership, when something breaks, who fixes it?',
+          'The same app can be built three ways on the same cloud, and the choice changes how much you operate, how much you pay, and how much control you keep. Pick the wrong level and you\'ll either do pointless ops work or lose control you actually needed.',
+          'A handy way to picture it is dinner. IaaS is renting a kitchen and buying ingredients yourself. PaaS is a meal kit where the recipe is done and ingredients are portioned. SaaS is just ordering takeaway. Each step removes work and you trade away control at the same time.',
+          'More concretely, Infrastructure as a Service gives you virtual machines, networks and storage. You patch the OS and everything above. Platform as a Service gives you a runtime that runs your code, the provider patches the OS and runtime for you. Software as a Service is just finished software you log into.',
+          'Here\'s where people slip up. The provider handles security of the cloud, the buildings, hardware, network and the managed service itself. You handle security in the cloud, your data, your access rules, your config. Moving to PaaS or SaaS shrinks your side, never wipes it out.',
+          'No matter the model, three things stay yours. Your data, your identities and your access decisions. A database provider won\'t decide who gets to read your customer table. That\'s why IAM and encryption are always on you.'
         ],
         demos: [
           {
@@ -270,7 +270,7 @@ console.log('You still own: ' + reality.youStillOwn.join(', '));`
     },
     {
       id: 'cloud-global-infra',
-      title: 'Regions, Availability Zones and Edge Locations',
+      title: 'Regions, availability zones and edge locations',
       objectives: [
         'Distinguish regions, availability zones and edge locations',
         'Choose a region using latency, cost and compliance',
@@ -280,12 +280,12 @@ console.log('You still own: ' + reality.youStillOwn.join(', '));`
       timeEstimateMin: 30,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 3 you read AWS_REGION from an environment variable. That value is not decoration. It decides where your data physically lives, which changes latency, price and what the law allows. Read it again before you continue.',
-          'Why this matters. Cloud resources are not in one place. Where you put them decides how fast your app feels, what a single hardware failure does to you, and whether you are allowed to serve a particular customer.',
-          'What the terms mean. A region is a geographic area, such as ap-south-1 in Mumbai. Inside a region are availability zones: physically separate data centres with independent power, cooling and networking. Edge locations are hundreds of smaller sites used by content delivery networks to cache content close to users.',
-          'Mental model: a city, its districts, and its corner shops. The region is the city. Availability zones are districts that can lose power independently. Edge locations are corner shops that keep a copy of the popular item nearby.',
-          'Availability zones exist so a single failure is survivable. If everything runs in one zone and that zone has a power event, your app is offline. Spread across two or more zones and the surviving zone keeps serving.',
-          'Production insight. Region choice is a four-way trade-off: latency to users, price, data-residency law, and the availability of the specific services you need. Teams also avoid putting everything in a single region if the business requires regional failover, and they use edge caching to reduce both latency and origin load.'
+          'Remember AWS_REGION from lesson 3? That variable isn\'t decoration, it decides where your data physically lives. That changes how fast things feel, what they cost, and what you\'re legally allowed to do, so read it again before you move on.',
+          'Cloud resources aren\'t all in one place. Where you put them decides how snappy your app feels, what a single hardware failure does, and whether you can even serve a given customer under local law.',
+          'A region is a geographic area, like ap-south-1 in Mumbai. Inside each region you\'ve got availability zones, separate data centres with their own power, cooling and networking. Edge locations are different, they\'re hundreds of small sites that content delivery networks use to cache stuff close to users.',
+          'If it helps, think city analogy. Region is the city, availability zones are districts that can lose power independently, edge locations are corner shops that keep the popular items nearby. The shop helps with speed, the districts help with survival.',
+          'That split exists so one failure doesn\'t take you down. Run everything in a single zone and a power event there means you\'re offline. Spread across two or more and the survivor keeps serving. It\'s a pretty straightforward trade, a bit more cost for actual fault tolerance.',
+          'Picking a region is a balancing act. You\'re weighing latency to your users, price in that region, data residency rules, and whether the services you need are even available there. You might also keep edge caching in the mix to cut both latency and load on the origin, and avoid piling everything into one region if the business needs a fallback.'
         ],
         demos: [
           {
@@ -388,7 +388,7 @@ console.log('Failure domains tolerated: ' + (deployment.availabilityZones.length
     },
     {
       id: 'cloud-cost-controls',
-      title: 'Cloud Cost: Pricing Models, Tags, Budgets and Cleanup',
+      title: 'Cloud cost: pricing models, tags, budgets and cleanup',
       objectives: [
         'Explain on-demand, savings plan, reserved and spot pricing',
         'Use tags to attribute cost to a project',
@@ -399,12 +399,12 @@ console.log('Failure domains tolerated: ' + (deployment.availabilityZones.length
       timeEstimateMin: 35,
       content: {
         explanations: [
-          'Foundation drill. In Lesson 1 you wrote evaluateBudget and learned the hard rule: alerts notify, they never enforce. Now we go one level deeper, into what actually creates the cost.',
-          'Why this matters. In the cloud, cost is a design decision. Two architectures that behave identically can differ tenfold in price. If you cannot reason about cost, you will build something that works and cannot ship.',
-          'The pricing models. On-demand charges by the second with no commitment. Savings plans and reserved capacity give a large discount in exchange for a one or three year commitment on a steady baseline. Spot pricing is very cheap but the provider may reclaim the capacity with little warning, so only interruptible work belongs there.',
-          'Tags are how you find cost. A tag is a key and value attached to a resource, such as project=ecosystem and owner=jayant. Without tags, a bill is one large number and nobody knows which team caused it. With tags, cost becomes attributable and therefore manageable.',
-          'Mental model for serverless cost: a taxi meter. You are billed per request plus the memory your code used, multiplied by how long it ran. A slow function with generous memory is an expensive function, which is why performance tuning is also cost tuning.',
-          'Production insight. The reliable cost control stack is: tag everything, set a budget alert at 85 percent actual and 100 percent forecast, review the largest line items monthly, delete unused resources, and treat every lab as reversible. Cost review is part of engineering review, not an accounting afterthought.'
+          'You already built evaluateBudget in lesson 1 and saw alerts just notify. Now we dig into what actually creates the cost in the first place.',
+          'In the cloud, cost is a design choice. Two architectures that behave the same can differ tenfold in price. If you can\'t reason about cost, you might ship something that works perfectly and still can\'t make sense financially.',
+          'There are four main ways you pay. On-demand bills by the second with no commitment. Savings plans and reserved capacity give you a big discount for a one or three year promise on the steady part. Spot is super cheap but the provider can take it back with short notice, so only put interruptible work there.',
+          'Tags are how you figure out where the money went. They\'re just a key and value on a resource, like project=ecosystem and owner=jayant. Without them the bill is one big number and no one knows which team caused it. With them, cost becomes attributable and therefore manageable.',
+          'Serverless cost feels like a taxi meter. You pay per request plus memory multiplied by how long it ran. A slow function with generous memory is an expensive function. That\'s why tuning performance is also tuning cost, they\'re the same lever.',
+          'A solid routine looks like this: tag everything, set that 85 percent actual and 100 percent forecast alert, eyeball the biggest line items each month, delete what you\'re not using, and treat every lab as reversible. It\'s an engineering review thing, not an accounting afterthought.'
         ],
         demos: [
           {

@@ -114,8 +114,42 @@ test('accepts multipart/form-data uploads', async () => {
   assert.equal(body.transcript, 'hello from multipart');
 });
 
-test('empty transcript short-circuits before the LLM', async () => {
+test('intro turn speaks first, with no audio and no LLM call', async () => {
   const provider = fakeProvider();
+  const urls = [];
+  const handler = createHandler({
+    fetchImpl: async (url) => {
+      urls.push(String(url));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ text: '' }),
+        text: async () => '',
+        headers: { get: () => 'application/json' },
+        arrayBuffer: async () => new Uint8Array([9, 9]).buffer,
+      };
+    },
+    provider,
+    env: ENV,
+    logger: silentLogger,
+  });
+
+  const res = await handler(
+    jsonEvent({ intro: true, lessonTitle: 'S3 keys', lessonMode: 'hands-on' }),
+  );
+  const body = JSON.parse(res.body);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(body.transcript, '');
+  assert.match(body.response, /S3 keys/);
+  assert.match(body.response, /code demo/);
+  assert.equal(body.audio, Buffer.from([9, 9]).toString('base64'));
+  assert.deepEqual(body.toolCalls, []);
+  assert.equal(provider.calls.length, 0, 'the intro is templated, so no LLM call');
+  assert.ok(!urls.some((url) => url.includes('speech-to-text')), 'no STT on an intro turn');
+});
+
+test('empty transcript short-circuits before the LLM', async () => {  const provider = fakeProvider();
   const handler = createHandler({
     fetchImpl: sttFetch(''),
     provider,
