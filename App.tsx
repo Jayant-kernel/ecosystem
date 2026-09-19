@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import LandingPage from './components/CourseSelection';
 import DashboardPage from './pages/DashboardPage';
 import LearningView from './components/LearningView';
@@ -105,11 +105,22 @@ const MainApp: React.FC = () => {
   );
 };
 
+// Debug-only laptop rig lab. Gated on a query flag so the default app is untouched.
+const showLaptopLab =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('laptop-debug') === '1';
+const LaptopLab = React.lazy(() => import('./components/cinematic-hero/laptop-lab/LaptopLab'));
+
 const App: React.FC = () => {
     return (
         <ThemeProvider>
             <AuthProvider>
                 <MainApp />
+                {showLaptopLab ? (
+                    <Suspense fallback={null}>
+                        <LaptopLab />
+                    </Suspense>
+                ) : null}
             </AuthProvider>
         </ThemeProvider>
     );

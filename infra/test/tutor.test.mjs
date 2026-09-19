@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createProvider, generateTutorResponse, buildSystemPrompt } from '../src/llm-bridge/tutor.mjs';
-import { normalizeHistory, selectTools, TOOLS, THEORY_TOOLS } from '../src/llm-bridge/tools.mjs';
+import { normalizeHistory, selectTools, TOOLS, THEORY_TOOLS, toolResultText } from '../src/llm-bridge/tools.mjs';
 import { buildIntro } from '../src/llm-bridge/index.mjs';
 
 test('createProvider defaults to gemini and honours LLM_PROVIDER=bedrock', () => {
@@ -68,6 +68,25 @@ test('system prompt carries the teaching playbook and its hard bans', () => {
 
   // Listening still outranks the curriculum script.
   assert.match(prompt, /ANSWER THE LEARNER'S ACTUAL QUESTION/);
+});
+
+test('TOOLS exposes highlightLines with a spoken line range', () => {
+  const tool = TOOLS.find((t) => t.name === 'highlightLines');
+  assert.ok(tool);
+  assert.deepEqual(Object.keys(tool.parameters.properties).sort(), ['endLine', 'note', 'startLine']);
+  assert.deepEqual(tool.parameters.required, ['startLine', 'endLine']);
+});
+
+test('toolResultText describes highlighted lines', () => {
+  assert.equal(toolResultText('highlightLines', { startLine: 3, endLine: 5 }), 'Lines 3-5 highlighted.');
+  assert.equal(toolResultText('writeCode', {}), 'Code written to the learner editor.');
+});
+
+test('buildSystemPrompt names the chapter module and the highlight workflow', () => {
+  const prompt = buildSystemPrompt({ lessonTitle: 'Loops', moduleTitle: 'Basics' });
+  assert.match(prompt, /Module: Basics/);
+  assert.match(prompt, /highlightLines/);
+  assert.match(prompt, /LESSON OPENING/);
 });
 
 test('normalizeHistory drops leading assistant turns and merges same roles', () => {

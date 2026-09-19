@@ -78,6 +78,31 @@ export const useVoiceTutor = (
     finishPlaybackRef.current = null;
   }, []);
 
+  /** Returns the current session id, creating a backend session on first use. */
+  const ensureSessionId = useCallback(async (): Promise<string> => {
+    if (!sessionIdRef.current) {
+      sessionIdRef.current = await voiceService.createSession();
+    }
+    return sessionIdRef.current;
+  }, []);
+
+  /** Append an exchange (e.g. a chapter intro) to the local conversation history. */
+  const pushHistory = useCallback((userText: string, assistantText: string) => {
+    if (!userText && !assistantText) return;
+    historyRef.current = [
+      ...historyRef.current,
+      { role: 'user' as const, content: userText },
+      { role: 'assistant' as const, content: assistantText },
+    ].slice(-MAX_HISTORY_TURNS);
+  }, []);
+
+  /** Start a fresh conversation (used when the learner opens another chapter). */
+  const resetConversation = useCallback(() => {
+    historyRef.current = [];
+    sessionIdRef.current = null;
+    setSessionError(null);
+  }, []);
+
   const releaseStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
@@ -275,6 +300,12 @@ export const useVoiceTutor = (
     releaseStream();
   }, [releaseStream, stopPlayback]);
 
+  /** Play server-generated audio (e.g. a chapter intro) outside a recording. */
+  const playExternalAudio = useCallback(async (base64: string, mimeType: string) => {
+    setSessionError(null);
+    await playAudio(base64, mimeType);
+  }, [playAudio]);
+
   return {
     isSessionActive: isRecording,
     isConnecting: isProcessing,
@@ -285,5 +316,9 @@ export const useVoiceTutor = (
     stopSession,
     toggleMute,
     sessionError,
+    ensureSessionId,
+    pushHistory,
+    resetConversation,
+    playExternalAudio,
   };
 };

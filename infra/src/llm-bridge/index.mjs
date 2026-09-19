@@ -180,6 +180,78 @@ export function createHandler(deps = {}) {
     );
   }
 
+  /**
+   * Text-in variant of the voice pipeline for proactive moments (e.g. a
+   * chapter intro the learner triggers with a button, not the microphone).
+   * Runs the same tutor + tool calls + TTS, minus STT.
+   */
+  async function handleIntro(event) {
+    const origin = env.ALLOWED_ORIGIN || '*';
+    const ttlMs = Number(env.SESSION_TTL_MS || DEFAULT_SESSION_TTL_MS);
+
+    const { fields } = await parseRequestBody(event, {
+      maxBytes: Number(env.MAX_AUDIO_BYTES) || undefined,
+    });
+
+    const lessonTitle = typeof fields.lessonTitle === 'string' ? fields.lessonTitle.trim() : '';
+    if (!lessonTitle) {
+      throw new BadRequestError('lessonTitle is required');
+    }
+
+    const sessionId = (typeof fields.sessionId === 'string' && fields.sessionId) || uuid();
+    const moduleTitle = typeof fields.moduleTitle === 'string' ? fields.moduleTitle.trim() : '';
+    const openingQuestion = typeof fields.openingQuestion === 'string' ? fields.openingQuestion.trim() : '';
+    const summary = typeof fields.lessonSummary === 'string' ? fields.lessonSummary.trim().slice(0, 800) : '';
+
+    const transcript =
+      `[Lesson opened] The learner just opened the chapter "${lessonTitle}"` +
+      (moduleTitle ? ` in module "${moduleTitle}"` : '') +
+      `. Greet them warmly BY NAMING the chapter, ask if they would like to understand it, ` +
+      `then ask ONE opening question to start the conversation` +
+      (openingQuestion ? ` (you may use this one: "${openingQuestion}")` : '') +
+      `. Keep it short — this is spoken aloud. Do not explain the chapter yet; wait for their answer.` +
+      (summary ? ` Chapter reference (do not read aloud verbatim): ${summary}` : '');
+
+    const context = {
+      lessonTitle,
+      moduleTitle,
+      objectives: fields.objectives,
+      aiMemory: fields.aiMemory,
+      editorCode: fields.editorCode,
+    };
+    const history = getSessionHistory(sessionId, ttlMs) || parseClientHistory(fields.history);
+
+    const result = await generateTutorResponse({
+      provider: getProvider(),
+      transcript,
+      history,
+      context,
+    });
+
+    appendSessionTurn(sessionId, 'user', `[Opened chapter: ${lessonTitle}]`, ttlMs);
+    appendSessionTurn(sessionId, 'assistant', result.text, ttlMs);
+
+    const audioOut = await textToSpeech(result.text, {
+      apiKey: env.ELEVENLABS_API_KEY,
+      voiceId: env.ELEVENLABS_VOICE_ID,
+      modelId: env.TTS_MODEL_ID || 'eleven_flash_v2_5',
+      fetchImpl,
+    });
+
+    return json(
+      200,
+      {
+        sessionId,
+        response: result.text,
+        audio: audioOut.buffer.toString('base64'),
+        audioMimeType: audioOut.mimeType,
+        audioEncoding: 'base64',
+        toolCalls: result.toolCalls,
+      },
+      origin,
+    );
+  }
+
   return async function handler(event) {
     const origin = env.ALLOWED_ORIGIN || '*';
     const { method, path } = routeOf(event);
@@ -194,6 +266,9 @@ export function createHandler(deps = {}) {
       }
       if (method === 'POST' && path.endsWith('/voice')) {
         return await handleVoice(event);
+      }
+      if (method === 'POST' && path.endsWith('/intro')) {
+        return await handleIntro(event);
       }
       return json(404, { error: { code: 'not_found', message: 'Not found' } }, origin);
     } catch (error) {

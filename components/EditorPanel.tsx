@@ -7,6 +7,7 @@ interface EditorPanelProps {
   readOnly?: boolean;
   /** 1-based line numbers the tutor is currently talking about. */
   highlightLines?: number[];
+  onMountEditor?: (editor: any, monaco: any) => void;
 }
 
 const EditorPanel: React.FC<EditorPanelProps> = ({
@@ -14,6 +15,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   onCodeChange,
   readOnly = false,
   highlightLines = [],
+  onMountEditor,
 }) => {
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -22,6 +24,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({
   const handleMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    onMountEditor?.(editor, monaco);
   };
 
   // Paint (and clear) the tutor's highlight as it talks through the code.

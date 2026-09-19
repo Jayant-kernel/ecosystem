@@ -18,6 +18,8 @@ interface ConversationPanelProps {
     transcript: Transcript;
     sessionError: string | null;
     currentLesson: Lesson | null;
+    onRequestIntro: (() => void) | null;
+    introLoading: boolean;
 }
 
 const ConversationPanel: React.FC<ConversationPanelProps> = ({
@@ -31,7 +33,9 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
     toggleMute,
     transcript,
     sessionError,
-    currentLesson
+    currentLesson,
+    onRequestIntro,
+    introLoading
 }) => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'guide' | 'tutor' | 'notes'>('guide');
@@ -200,6 +204,20 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
                                     </div>
                                     <h3 className="text-zinc-300 font-bold mb-2">Voice Interface</h3>
                                     <p className="text-xs text-zinc-500 max-w-xs">Tap the microphone below to start talking to your AI Tutor.</p>
+                                    {currentLesson && onRequestIntro && (
+                                        <button
+                                            onClick={onRequestIntro}
+                                            disabled={introLoading}
+                                            className="mt-4 px-4 py-2 rounded-xl bg-orange-500/15 border border-orange-500/30 text-orange-300 text-xs font-bold hover:bg-orange-500/25 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-wait opacity-100"
+                                        >
+                                            {introLoading
+                                                ? <i className="fas fa-spinner fa-spin"></i>
+                                                : <i className="fas fa-play"></i>}
+                                            {introLoading
+                                                ? 'Introducing chapter…'
+                                                : `Introduce "${currentLesson.title}"`}
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
