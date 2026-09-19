@@ -13,7 +13,17 @@ interface LiveRig {
   screenMaterial: THREE.MeshBasicMaterial | null;
   screenTexture: THREE.CanvasTexture | null;
   previousMaterial: THREE.Material | THREE.Material[] | null;
+  restrained: Array<{ mesh: THREE.Mesh; original: THREE.Material | THREE.Material[] }>;
+  dimmed: THREE.Material[];
 }
+
+/**
+ * Keyboard/deck materials that read blown out under studio lighting:
+ * - `Material.007`: full-white emissive LED elements.
+ * - `Material.009` / `Material.010`: colorful albedo textures on the deck.
+ */
+const EMISSIVE_LED_MATERIAL = 'Material.007';
+const DECK_TEXTURE_MATERIALS = new Set(['Material.009', 'Material.010']);
 
 /**
  * The production laptop: actual GLB + the shared LidPivot rig, driven by the
@@ -44,7 +54,49 @@ export default function RiggedLaptop({ content }: { content?: VoiceScreenContent
       rig.screenMesh.material = screenMaterial;
     }
 
-    liveRef.current = { rig, screenMaterial, screenTexture, previousMaterial };
+    // Restrained keyboard/deck illumination, applied by clone-and-replace so
+    // the shared GLTF cache (and the debug rig lab) is never mutated.
+    const restrained: LiveRig['restrained'] = [];
+    const dimmed: THREE.Material[] = [];
+    const dimmedByName = new Map<string, THREE.Material>();
+    gltf.scene.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh || mesh === rig.screenMesh) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      let replaced = false;
+      const next = mats.map((mat) => {
+        if (!mat || mat.name === '') return mat;
+        const dimmable =
+          mat.name === EMISSIVE_LED_MATERIAL || DECK_TEXTURE_MATERIALS.has(mat.name);
+        if (!dimmable) return mat;
+        let clone = dimmedByName.get(mat.name);
+        if (!clone) {
+          clone = mat.clone();
+          const std = clone as THREE.MeshStandardMaterial;
+          if (mat.name === EMISSIVE_LED_MATERIAL) {
+            std.emissiveIntensity = 0.3;
+          } else if (mat.name === 'Material.009') {
+            // RGB keyboard albedo: bright colorful key legends lit by the
+            // studio key/rim. envMapIntensity alone cannot dim diffuse albedo,
+            // so multiply the map down while keeping the legends readable.
+            std.color.setScalar(0.25);
+            std.envMapIntensity = 0.35;
+          } else {
+            std.envMapIntensity = 0.35;
+          }
+          dimmedByName.set(mat.name, clone);
+          dimmed.push(clone);
+        }
+        replaced = true;
+        return clone;
+      });
+      if (replaced) {
+        restrained.push({ mesh, original: mesh.material });
+        mesh.material = Array.isArray(mesh.material) ? next : next[0];
+      }
+    });
+
+    liveRef.current = { rig, screenMaterial, screenTexture, previousMaterial, restrained, dimmed };
     invalidate();
 
     return () => {
@@ -56,6 +108,12 @@ export default function RiggedLaptop({ content }: { content?: VoiceScreenContent
       }
       live.screenMaterial?.dispose();
       live.screenTexture?.dispose();
+      for (const entry of live.restrained) {
+        entry.mesh.material = entry.original;
+      }
+      for (const clone of live.dimmed) {
+        clone.dispose();
+      }
       live.rig.dispose();
     };
   }, [gltf, gl, invalidate]);

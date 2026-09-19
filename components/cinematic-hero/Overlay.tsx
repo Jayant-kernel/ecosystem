@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import { filmDriver } from './filmDriver';
 import { sampleTimeline, smoothstep } from './timeline';
@@ -78,17 +78,69 @@ interface ScatterSeed {
   scale: number;
 }
 
-const SCATTER: ScatterSeed[] = [
-  { dx: 46, dy: -64, rotDeg: -4, scale: 0.92 }, // eyebrow
-  { dx: -72, dy: 54, rotDeg: 3, scale: 0.94 }, // headline
-  { dx: 64, dy: 84, rotDeg: -2.5, scale: 1.06 }, // sub
-  { dx: -58, dy: -48, rotDeg: 2, scale: 0.9 }, // CTA row
-  { dx: 30, dy: 70, rotDeg: -3, scale: 1.04 }, // note
-];
-
-function scatterProgress(t: number, index: number): number {
-  return smoothstep(SCATTER_START + index * 0.02, SCATTER_END, t);
+interface WordSeed extends ScatterSeed {
+  /** Staggered assembly start for this word; all words lock by SCATTER_END. */
+  start: number;
 }
+
+/** Deterministic PRNG (fixed seeds — never Math.random during rendering). */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Single source of truth for the panel copy. Rendered word-by-word below so
+ * each word can scatter independently while the assembled layout stays
+ * exactly the normal hero copy.
+ */
+const COPY = {
+  eyebrow: 'Ecosystem · AI Coding Tutor',
+  headline: 'Talk. Code. Understand.',
+  sub: 'An AI-powered coding companion that helps you learn concepts, debug errors, and build with confidence all through your voice.',
+  ctaPrimary: 'Start Learning Free',
+  ctaSecondary: 'Browse courses',
+  note: 'Scroll to continue',
+} as const;
+
+type CopyKey = keyof typeof COPY;
+
+const WORDS: Record<CopyKey, string[]> = {
+  eyebrow: COPY.eyebrow.split(' '),
+  headline: COPY.headline.split(' '),
+  sub: COPY.sub.split(' '),
+  ctaPrimary: COPY.ctaPrimary.split(' '),
+  ctaSecondary: COPY.ctaSecondary.split(' '),
+  note: COPY.note.split(' '),
+};
+
+function makeWordSeeds(count: number, salt: number): WordSeed[] {
+  const rnd = mulberry32(0x9e3779b9 ^ salt);
+  return Array.from({ length: count }, (_, i) => ({
+    // Neighboring words fly opposite ways for composed contrast.
+    dx: (i % 2 === 0 ? 1 : -1) * (60 + rnd() * 80),
+    dy: (rnd() * 2 - 1) * 110,
+    rotDeg: (rnd() * 2 - 1) * 5,
+    scale: 0.9 + rnd() * 0.18,
+    start: SCATTER_START + (count <= 1 ? 0 : (i / (count - 1)) * 0.1),
+  }));
+}
+
+/** Stable deterministic seeds, computed once per copy block. */
+const SEEDS: Record<CopyKey, WordSeed[]> = {
+  eyebrow: makeWordSeeds(WORDS.eyebrow.length, 11),
+  headline: makeWordSeeds(WORDS.headline.length, 22),
+  sub: makeWordSeeds(WORDS.sub.length, 33),
+  ctaPrimary: makeWordSeeds(WORDS.ctaPrimary.length, 44),
+  ctaSecondary: makeWordSeeds(WORDS.ctaSecondary.length, 55),
+  note: makeWordSeeds(WORDS.note.length, 66),
+};
 
 function setScatter(
   el: HTMLElement | null,
@@ -109,6 +161,21 @@ function setScatter(
     : `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${r.toFixed(2)}deg) scale(${s.toFixed(3)})`;
 }
 
+/** Applies per-word scatter for one copy block; all words lock by SCATTER_END. */
+function scatterWords(
+  refs: Array<HTMLSpanElement | null>,
+  seeds: WordSeed[],
+  t: number,
+  driftYPx: number,
+): void {
+  for (let i = 0; i < refs.length; i++) {
+    const el = refs[i];
+    const seed = seeds[i];
+    if (!el || !seed) continue;
+    setScatter(el, smoothstep(seed.start, SCATTER_END, t), seed, driftYPx);
+  }
+}
+
 /**
  * DOM overlay for the film. Every opacity and offset below is a pure function
  * of film time, so forward and reverse scrubbing render identical frames for
@@ -125,6 +192,12 @@ export default function Overlay({ navigateTo, canvasWrapRef }: OverlayProps): JS
   const subRef = useRef<HTMLParagraphElement | null>(null);
   const ctaRef = useRef<HTMLDivElement | null>(null);
   const noteRef = useRef<HTMLParagraphElement | null>(null);
+  const eyebrowWordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const headlineWordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const subWordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const ctaPrimaryWordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const ctaSecondaryWordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const noteWordRefs = useRef<Array<HTMLSpanElement | null>>([]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -155,27 +228,28 @@ export default function Overlay({ navigateTo, canvasWrapRef }: OverlayProps): JS
 
         // Handoff: panel fades in while the canvas fades slightly behind it.
         // Editorial children stagger inside the same window; the note settles
-        // just after. Scatter transforms compose on top of the existing drift
-        // and resolve to identity, so the assembled page matches the layout
-        // exactly. All pure in t — reverse is the exact inverse.
+        // just after. Each word scatters independently and converges to the
+        // exact layout — the assembled page matches the hero copy precisely.
+        // All pure in t — reverse is the exact inverse.
         setFade(panelRef.current, panel, 0, true);
         const eyebrow = smoothstep(0.64, 0.74, t);
         setFade(eyebrowRef.current, eyebrow);
-        setScatter(eyebrowRef.current, scatterProgress(t, 0), SCATTER[0], 0);
+        scatterWords(eyebrowWordRefs.current, SEEDS.eyebrow, t, 0);
         const headline = smoothstep(0.66, 0.78, t);
         const headlineDrift = (1 - headline) * 20;
         setFade(headlineRef.current, headline, headlineDrift);
-        setScatter(headlineRef.current, scatterProgress(t, 1), SCATTER[1], headlineDrift);
+        scatterWords(headlineWordRefs.current, SEEDS.headline, t, headlineDrift);
         const sub = smoothstep(0.68, 0.8, t);
         const subDrift = (1 - sub) * 16;
         setFade(subRef.current, sub, subDrift);
-        setScatter(subRef.current, scatterProgress(t, 2), SCATTER[2], subDrift);
+        scatterWords(subWordRefs.current, SEEDS.sub, t, subDrift);
         const ctas = smoothstep(0.7, 0.82, t);
         const ctaDrift = (1 - ctas) * 12;
         setFade(ctaRef.current, ctas, ctaDrift);
-        setScatter(ctaRef.current, scatterProgress(t, 3), SCATTER[3], ctaDrift);
+        scatterWords(ctaPrimaryWordRefs.current, SEEDS.ctaPrimary, t, ctaDrift);
+        scatterWords(ctaSecondaryWordRefs.current, SEEDS.ctaSecondary, t, ctaDrift);
         setFade(noteRef.current, smoothstep(0.72, 0.84, t));
-        setScatter(noteRef.current, scatterProgress(t, 4), SCATTER[4], 0);
+        scatterWords(noteWordRefs.current, SEEDS.note, t, 0);
 
         const canvasFade = smoothstep(HANDOFF_START + 0.02, HANDOFF_END + 0.03, t);
         const canvasWrap = canvasWrapRef.current;
@@ -247,17 +321,52 @@ export default function Overlay({ navigateTo, canvasWrapRef }: OverlayProps): JS
             ref={eyebrowRef}
             className="mb-5 text-[11px] font-semibold uppercase tracking-[0.28em] text-orange-500/90"
           >
-            Ecosystem · AI Coding Tutor
+            {WORDS.eyebrow.map((word, i) => (
+              <Fragment key={`eyebrow-${i}`}>
+                <span
+                  ref={(el) => {
+                    eyebrowWordRefs.current[i] = el;
+                  }}
+                  className="inline-block"
+                >
+                  {word}
+                </span>
+                {i < WORDS.eyebrow.length - 1 ? ' ' : null}
+              </Fragment>
+            ))}
           </p>
           <h1
             ref={headlineRef}
             className="mb-5 font-manrope text-4xl font-medium leading-[1.05] tracking-[-0.02em] text-white md:text-6xl"
           >
-            Talk. Code. Understand.
+            {WORDS.headline.map((word, i) => (
+              <Fragment key={`headline-${i}`}>
+                <span
+                  ref={(el) => {
+                    headlineWordRefs.current[i] = el;
+                  }}
+                  className="inline-block"
+                >
+                  {word}
+                </span>
+                {i < WORDS.headline.length - 1 ? ' ' : null}
+              </Fragment>
+            ))}
           </h1>
           <p ref={subRef} className="mx-auto mb-8 max-w-lg text-base leading-relaxed text-zinc-400/90 md:text-lg">
-            An AI-powered coding companion that helps you learn concepts,
-            debug errors, and build with confidence all through your voice.
+            {WORDS.sub.map((word, i) => (
+              <Fragment key={`sub-${i}`}>
+                <span
+                  ref={(el) => {
+                    subWordRefs.current[i] = el;
+                  }}
+                  className="inline-block"
+                >
+                  {word}
+                </span>
+                {i < WORDS.sub.length - 1 ? ' ' : null}
+              </Fragment>
+            ))}
           </p>
           <div ref={ctaRef} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <button
@@ -265,18 +374,54 @@ export default function Overlay({ navigateTo, canvasWrapRef }: OverlayProps): JS
               onClick={() => navigateTo('signup')}
               className="rounded-full bg-white px-7 py-3.5 text-[13px] font-bold uppercase tracking-widest text-black transition-colors hover:bg-orange-500 hover:text-white"
             >
-              Start Learning Free
+              {WORDS.ctaPrimary.map((word, i) => (
+                <Fragment key={`cta-primary-${i}`}>
+                  <span
+                    ref={(el) => {
+                      ctaPrimaryWordRefs.current[i] = el;
+                    }}
+                    className="inline-block"
+                  >
+                    {word}
+                  </span>
+                  {i < WORDS.ctaPrimary.length - 1 ? ' ' : null}
+                </Fragment>
+              ))}
             </button>
             <button
               type="button"
               onClick={() => navigateTo('courses')}
               className="rounded-full border border-white/15 px-7 py-3.5 text-[13px] font-bold uppercase tracking-widest text-zinc-300 transition-colors hover:border-white/40 hover:text-white"
             >
-              Browse courses
+              {WORDS.ctaSecondary.map((word, i) => (
+                <Fragment key={`cta-secondary-${i}`}>
+                  <span
+                    ref={(el) => {
+                      ctaSecondaryWordRefs.current[i] = el;
+                    }}
+                    className="inline-block"
+                  >
+                    {word}
+                  </span>
+                  {i < WORDS.ctaSecondary.length - 1 ? ' ' : null}
+                </Fragment>
+              ))}
             </button>
           </div>
           <p ref={noteRef} className="mt-8 text-[11px] uppercase tracking-[0.2em] text-zinc-600">
-            Scroll to continue
+            {WORDS.note.map((word, i) => (
+              <Fragment key={`note-${i}`}>
+                <span
+                  ref={(el) => {
+                    noteWordRefs.current[i] = el;
+                  }}
+                  className="inline-block"
+                >
+                  {word}
+                </span>
+                {i < WORDS.note.length - 1 ? ' ' : null}
+              </Fragment>
+            ))}
           </p>
         </div>
       </div>
