@@ -23,6 +23,7 @@ interface LiveRig {
 export default function RiggedLaptop({ content }: { content?: VoiceScreenContent }): JSX.Element | null {
   const gltf = useLoader(GLTFLoader, glbUrl);
   const invalidate = useThree((state) => state.invalidate);
+  const gl = useThree((state) => state.gl);
   const contentRef = useRef(content);
   contentRef.current = content;
   const liveRef = useRef<LiveRig | null>(null);
@@ -36,6 +37,9 @@ export default function RiggedLaptop({ content }: { content?: VoiceScreenContent
     if (rig.screenMesh) {
       previousMaterial = rig.screenMesh.material;
       screenTexture = createVoiceScreenTexture(contentRef.current);
+      // Real renderer cap (bounded at 8) for crisp text at glancing angles.
+      screenTexture.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+      screenTexture.needsUpdate = true;
       screenMaterial = new THREE.MeshBasicMaterial({ map: screenTexture });
       rig.screenMesh.material = screenMaterial;
     }
@@ -54,7 +58,7 @@ export default function RiggedLaptop({ content }: { content?: VoiceScreenContent
       live.screenTexture?.dispose();
       live.rig.dispose();
     };
-  }, [gltf, invalidate]);
+  }, [gltf, gl, invalidate]);
 
   useFrame(() => {
     const live = liveRef.current;

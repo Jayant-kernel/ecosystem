@@ -38,8 +38,8 @@ export const HINGE_POINT: Vector3Tuple = [-1.199, 0.096, 0];
 
 export const TIMELINE: TimelineConfig = {
   runwayViewportHeights: 4.2,
-  lidStartDistance: 5.2,
-  lidFullOpenDistance: 3.0,
+  lidStartDistance: 8.0,
+  lidFullOpenDistance: 7.5,
   displayFillStartT: 0.9,
   /**
    * Handoff window, chosen from observed screen coverage: the display already
