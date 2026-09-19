@@ -68,14 +68,24 @@ Parameters:
     Type: String
     NoEcho: true
     Description: Gemini API key. Used only inside the Lambda (temporary LLM). Never sent to the browser.
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: OpenAI API key. Server-side only; never sent to the browser.
+  OpenAIModelId:
+    Type: String
+    Default: gpt-4o-mini
+    Description: OpenAI model id used by the primary tutor provider.
   GeminiModelId:
     Type: String
     Default: gemini-2.5-flash
     Description: Gemini model id used as the temporary tutor brain.
   LlmProvider:
     Type: String
-    Default: groq
+    Default: openai
     AllowedValues:
+      - openai
       - groq
       - grok
       - gemini
@@ -83,10 +93,10 @@ Parameters:
     Description: Primary LLM provider for the tutor.
   LlmFallbackProvider:
     Type: String
-    Default: gemini
+    Default: groq,gemini
     Description: >-
       Providers tried in order when the primary fails (rate limit, outage, bad
-      key). Accepts a comma-separated chain, e.g. "gemini" or "grok,gemini".
+      key). Accepts a comma-separated chain, e.g. "groq,gemini".
       Set to 'none' to disable fallback.
   GroqApiKey:
     Type: String
@@ -187,6 +197,8 @@ Resources:
           SARVAM_TTS_TEMPERATURE: !Ref SarvamTtsTemperature
           LLM_PROVIDER: !Ref LlmProvider
           LLM_FALLBACK_PROVIDER: !Ref LlmFallbackProvider
+          OPENAI_API_KEY: !Ref OpenAIApiKey
+          OPENAI_MODEL_ID: !Ref OpenAIModelId
           GROQ_API_KEY: !Ref GroqApiKey
           GROQ_MODEL_ID: !Ref GroqModelId
           GROQ_REASONING_EFFORT: !Ref GroqReasoningEffort

@@ -3,6 +3,7 @@ import { createGeminiProvider } from './providers/gemini.mjs';
 import { createBedrockProvider } from './providers/bedrock.mjs';
 import { createGrokProvider } from './providers/grok.mjs';
 import { createGroqProvider } from './providers/groq.mjs';
+import { createOpenAIProvider } from './providers/openai.mjs';
 import { sanitizeVisualToolCalls } from './visual.mjs';
 import { UpstreamError } from './errors.mjs';
 
@@ -11,6 +12,7 @@ export { buildSystemPrompt, selectTools, TOOLS, THEORY_TOOLS } from './tools.mjs
 /** Build one provider by name. Unknown names fall back to Gemini. */
 function providerFor(name, env, deps) {
   const key = String(name || 'gemini').toLowerCase();
+  if (key === 'openai') return createOpenAIProvider(env, deps.openai || {});
   if (key === 'groq') return createGroqProvider(env, deps.groq || {});
   if (key === 'grok' || key === 'xai') return createGrokProvider(env, deps.grok || {});
   if (key === 'bedrock') return createBedrockProvider(env, deps.bedrock || {});
@@ -21,14 +23,14 @@ function providerFor(name, env, deps) {
  * Provider factory. Order is env-driven and any number of fallbacks may be
  * chained with commas:
  *
- *   LLM_PROVIDER=groq
- *   LLM_FALLBACK_PROVIDER=gemini          // or "grok,gemini"
+ *   LLM_PROVIDER=openai
+ *   LLM_FALLBACK_PROVIDER=groq,gemini
  *   LLM_FALLBACK_PROVIDERS=gemini         // same thing, plural spelling
  *
  * Nothing outside this module knows which provider is in use.
  */
 export function createProvider(env = process.env, deps = {}) {
-  const primaryName = String(env.LLM_PROVIDER || 'gemini').toLowerCase();
+  const primaryName = String(env.LLM_PROVIDER || 'openai').toLowerCase();
   const primary = providerFor(primaryName, env, deps);
 
   const configured = String(env.LLM_FALLBACK_PROVIDERS || env.LLM_FALLBACK_PROVIDER || '');

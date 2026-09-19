@@ -5,11 +5,12 @@ import { normalizeHistory, selectTools, TOOLS, THEORY_TOOLS, toolResultText } fr
 import { sanitizeVisualToolCalls, validateVisualPlan } from '../src/llm-bridge/visual.mjs';
 import { buildIntro } from '../src/llm-bridge/index.mjs';
 
-test('createProvider defaults to gemini and honours LLM_PROVIDER', () => {
-  assert.equal(createProvider({}).name, 'gemini');
+test('createProvider defaults to openai and honours LLM_PROVIDER', () => {
+  assert.equal(createProvider({}).name, 'openai');
   assert.equal(createProvider({ LLM_PROVIDER: 'gemini' }).name, 'gemini');
   assert.equal(createProvider({ LLM_PROVIDER: 'bedrock' }).name, 'bedrock');
   assert.equal(createProvider({ LLM_PROVIDER: 'grok' }).name, 'grok');
+  assert.equal(createProvider({ LLM_PROVIDER: 'openai' }).name, 'openai');
 });
 
 test('createProvider falls back to the secondary provider when the primary fails', async () => {
