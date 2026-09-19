@@ -59,6 +59,57 @@ function setFade(
 }
 
 /**
+ * Scatter → assemble entrance for the first inside page (the handoff panel).
+ *
+ * The panel children start displaced and converge to their exact existing
+ * layout as the film crosses the handoff window — the page reconstructs
+ * itself as the camera finishes entering. Deterministic per-element seeds,
+ * staggered starts, one common lock point; a pure function of film time so
+ * reverse scrub disassembles symmetrically. At progress 1 the transform
+ * resolves to '' — pixel-identical to the layout without scatter.
+ */
+const SCATTER_START = HANDOFF_START;
+const SCATTER_END = 0.95;
+
+interface ScatterSeed {
+  dx: number;
+  dy: number;
+  rotDeg: number;
+  scale: number;
+}
+
+const SCATTER: ScatterSeed[] = [
+  { dx: 46, dy: -64, rotDeg: -4, scale: 0.92 }, // eyebrow
+  { dx: -72, dy: 54, rotDeg: 3, scale: 0.94 }, // headline
+  { dx: 64, dy: 84, rotDeg: -2.5, scale: 1.06 }, // sub
+  { dx: -58, dy: -48, rotDeg: 2, scale: 0.9 }, // CTA row
+  { dx: 30, dy: 70, rotDeg: -3, scale: 1.04 }, // note
+];
+
+function scatterProgress(t: number, index: number): number {
+  return smoothstep(SCATTER_START + index * 0.02, SCATTER_END, t);
+}
+
+function setScatter(
+  el: HTMLElement | null,
+  progress: number,
+  seed: ScatterSeed,
+  driftYPx: number,
+): void {
+  if (!el) return;
+  const k = 1 - Math.min(1, Math.max(0, progress));
+  const x = seed.dx * k;
+  const y = seed.dy * k + driftYPx;
+  const r = seed.rotDeg * k;
+  const s = 1 + (seed.scale - 1) * k;
+  const settled =
+    Math.abs(x) < 0.05 && Math.abs(y) < 0.05 && Math.abs(r) < 0.05 && Math.abs(s - 1) < 0.001;
+  el.style.transform = settled
+    ? ''
+    : `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${r.toFixed(2)}deg) scale(${s.toFixed(3)})`;
+}
+
+/**
  * DOM overlay for the film. Every opacity and offset below is a pure function
  * of film time, so forward and reverse scrubbing render identical frames for
  * identical `t`. A dedicated lightweight loop writes only these styles and
@@ -104,17 +155,27 @@ export default function Overlay({ navigateTo, canvasWrapRef }: OverlayProps): JS
 
         // Handoff: panel fades in while the canvas fades slightly behind it.
         // Editorial children stagger inside the same window; the note settles
-        // just after. All pure in t — reverse is the exact inverse.
+        // just after. Scatter transforms compose on top of the existing drift
+        // and resolve to identity, so the assembled page matches the layout
+        // exactly. All pure in t — reverse is the exact inverse.
         setFade(panelRef.current, panel, 0, true);
         const eyebrow = smoothstep(0.64, 0.74, t);
         setFade(eyebrowRef.current, eyebrow);
+        setScatter(eyebrowRef.current, scatterProgress(t, 0), SCATTER[0], 0);
         const headline = smoothstep(0.66, 0.78, t);
-        setFade(headlineRef.current, headline, (1 - headline) * 20);
+        const headlineDrift = (1 - headline) * 20;
+        setFade(headlineRef.current, headline, headlineDrift);
+        setScatter(headlineRef.current, scatterProgress(t, 1), SCATTER[1], headlineDrift);
         const sub = smoothstep(0.68, 0.8, t);
-        setFade(subRef.current, sub, (1 - sub) * 16);
+        const subDrift = (1 - sub) * 16;
+        setFade(subRef.current, sub, subDrift);
+        setScatter(subRef.current, scatterProgress(t, 2), SCATTER[2], subDrift);
         const ctas = smoothstep(0.7, 0.82, t);
-        setFade(ctaRef.current, ctas, (1 - ctas) * 12);
+        const ctaDrift = (1 - ctas) * 12;
+        setFade(ctaRef.current, ctas, ctaDrift);
+        setScatter(ctaRef.current, scatterProgress(t, 3), SCATTER[3], ctaDrift);
         setFade(noteRef.current, smoothstep(0.72, 0.84, t));
+        setScatter(noteRef.current, scatterProgress(t, 4), SCATTER[4], 0);
 
         const canvasFade = smoothstep(HANDOFF_START + 0.02, HANDOFF_END + 0.03, t);
         const canvasWrap = canvasWrapRef.current;
