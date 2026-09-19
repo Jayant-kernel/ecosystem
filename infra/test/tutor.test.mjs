@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createProvider, generateTutorResponse, buildSystemPrompt } from '../src/llm-bridge/tutor.mjs';
 import { normalizeHistory, selectTools, TOOLS, THEORY_TOOLS, toolResultText } from '../src/llm-bridge/tools.mjs';
-import { buildDirectVisualPlan, ensureDirectVisualPlan, sanitizeVisualToolCalls, validateVisualPlan } from '../src/llm-bridge/visual.mjs';
+import { buildDirectVisualPlan, buildVisualTourText, ensureDirectVisualPlan, sanitizeVisualToolCalls, validateVisualPlan } from '../src/llm-bridge/visual.mjs';
 import { buildIntro } from '../src/llm-bridge/index.mjs';
 
 test('createProvider defaults to openai and honours LLM_PROVIDER', () => {
@@ -305,6 +305,24 @@ test('a direct flowchart request always receives a valid lesson-derived visual p
   assert.equal(validateVisualPlan(calls[0].args), true);
   assert.deepEqual(ensureDirectVisualPlan(calls, 'Make me a flowchart', context), calls);
   assert.deepEqual(ensureDirectVisualPlan([], 'Explain the budget alert', context), []);
+});
+
+test('a direct flowchart gets one complete spoken tour when a provider reply is too short', async () => {
+  const provider = {
+    name: 'fake',
+    async generateTutorResponse() {
+      return { text: 'Here you go.', toolCalls: [] };
+    },
+  };
+  const result = await generateTutorResponse({
+    provider,
+    transcript: 'Make me a flowchart',
+    context: { lessonTitle: 'Cloud cost management', lessonFlows: 'Cost path: Budget -> Monitor -> Alert -> Optimize' },
+  });
+  assert.match(result.text, /whole picture from start to finish/i);
+  assert.match(result.text, /Would you like to explore any specific part\?/);
+  assert.equal(result.toolCalls[0].name, 'presentVisualExplanation');
+  assert.match(buildVisualTourText(result.toolCalls[0].args), /Follow the arrows/i);
 });
 
 test('a direct flowchart can map every chapter through the current lesson', () => {
