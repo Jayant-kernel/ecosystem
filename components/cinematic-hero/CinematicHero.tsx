@@ -8,7 +8,7 @@ import type { VoiceScreenContent } from './scene/VoiceScreen';
 const CinematicCanvas = React.lazy(() => import('./CinematicCanvas'));
 
 interface CinematicHeroProps {
-  navigateTo: (view: 'signup' | 'courses') => void;
+  navigateTo: (view: 'courses') => void;
   screenContent?: VoiceScreenContent;
 }
 
@@ -62,7 +62,7 @@ const CinematicHero: React.FC<CinematicHeroProps> = ({ navigateTo, screenContent
           </p>
           <button
             type="button"
-            onClick={() => navigateTo('signup')}
+            onClick={() => navigateTo('courses')}
             className="rounded-full bg-white px-8 py-4 text-sm font-bold uppercase tracking-widest text-black transition-colors hover:bg-orange-500 hover:text-white"
           >
             Start Learning Free

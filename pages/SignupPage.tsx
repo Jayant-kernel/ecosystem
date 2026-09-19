@@ -167,9 +167,9 @@ const SignupPage: React.FC<SignupPageProps> = ({ navigateTo }) => {
                 </form>
 
                 <p className="text-center text-gray-400 mt-8">
-                    Already have an account?{' '}
-                    <button onClick={() => navigateTo('login')} className="text-brand-green hover:underline font-medium">
-                        Sign In
+                    Ready to start learning?{' '}
+                    <button onClick={() => navigateTo('courses')} className="text-brand-green hover:underline font-medium">
+                        Browse Courses
                     </button>
                 </p>
             </div>

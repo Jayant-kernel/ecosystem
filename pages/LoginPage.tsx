@@ -141,9 +141,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ navigateTo }) => {
                 </form>
 
                 <p className="text-center text-gray-400 mt-8">
-                    Don't have an account?{' '}
-                    <button onClick={() => navigateTo('signup')} className="text-brand-green hover:underline font-medium">
-                        Sign Up
+                    Ready to start learning?{' '}
+                    <button onClick={() => navigateTo('courses')} className="text-brand-green hover:underline font-medium">
+                        Browse Courses
                     </button>
                 </p>
             </div>

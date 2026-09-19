@@ -15,7 +15,7 @@ const HANDOFF_END = 0.78;
 const showDebugUi = (import.meta as any).env?.DEV === true;
 
 interface OverlayProps {
-  navigateTo: (view: 'signup' | 'courses') => void;
+  navigateTo: (view: 'courses') => void;
   canvasWrapRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -104,7 +104,7 @@ const COPY = {
   eyebrow: 'Ecosystem · AI Coding Tutor',
   headline: 'Talk. Code. Understand.',
   sub: 'An AI-powered coding companion that helps you learn concepts, debug errors, and build with confidence all through your voice.',
-  ctaPrimary: 'Start Learning Free',
+  ctaPrimary: 'Browse Courses',
   ctaSecondary: 'Browse courses',
   note: 'Scroll to continue',
 } as const;
@@ -371,7 +371,7 @@ export default function Overlay({ navigateTo, canvasWrapRef }: OverlayProps): JS
           <div ref={ctaRef} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <button
               type="button"
-              onClick={() => navigateTo('signup')}
+              onClick={() => navigateTo('courses')}
               className="rounded-full bg-white px-7 py-3.5 text-[13px] font-bold uppercase tracking-widest text-black transition-colors hover:bg-orange-500 hover:text-white"
             >
               {WORDS.ctaPrimary.map((word, i) => (

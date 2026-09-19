@@ -81,7 +81,7 @@ export function OutcomeChapter({ navigateTo }: OutcomeChapterProps): JSX.Element
         </p>
         <button
           type="button"
-          onClick={() => navigateTo('signup')}
+          onClick={() => navigateTo('courses')}
           className="font-manrope mt-10 inline-flex items-center gap-3 rounded-full px-9 py-4 text-sm font-bold uppercase tracking-widest text-white transition-transform hover:scale-[1.03]"
           style={{ background: STORY.ink, fontFamily: STORY_FONT }}
         >
