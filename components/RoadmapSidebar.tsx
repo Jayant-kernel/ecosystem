@@ -22,7 +22,7 @@ const RoadmapSidebar: React.FC<RoadmapSidebarProps> = ({ course, completedLesson
     <aside className={`fixed inset-y-0 left-0 w-4/5 max-w-xs md:w-80 bg-black/60 backdrop-blur-xl border-r border-white/5 flex flex-col z-40 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <header className="p-6 border-b border-white/5 flex items-center justify-between flex-shrink-0 h-16 bg-white/5">
         <button onClick={onBack} className="text-zinc-400 hover:text-white transition-colors flex items-center gap-2 font-bold text-xs uppercase tracking-wider group">
-          <i className="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i> Dashboard
+          <i className="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i> Courses
         </button>
         {/* Mobile close button */}
         <button onClick={() => setIsOpen(false)} className="md:hidden text-zinc-500 p-2 hover:text-white transition-colors">

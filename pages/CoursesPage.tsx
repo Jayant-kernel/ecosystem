@@ -3,6 +3,7 @@ import { NavigateFn } from '../App';
 import { COURSES } from '../constants';
 import CourseDetailsModal from '../components/CourseDetailsModal';
 import { Course } from '../types';
+import { useCourseProgress } from '../hooks/useCourseProgress';
 
 interface CoursesPageProps {
   navigateTo: NavigateFn;
@@ -48,6 +49,23 @@ const DEFAULT_PRESENTATION: CoursePresentation = {
   iconColor: 'text-zinc-300',
   bgColor: 'bg-zinc-400/10',
   gradient: 'from-zinc-600 to-zinc-400'
+};
+
+const ActiveCourseProgress: React.FC<{ course: Course }> = ({ course }) => {
+  const { progress } = useCourseProgress(course.id);
+  const totalLessons = course.modules.reduce((total, module) => total + module.lessons.length, 0);
+  const percentage = totalLessons ? Math.round((progress.completedLessons.length / totalLessons) * 100) : 0;
+
+  return (
+    <div className="mt-5 space-y-2">
+      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+        <span>Course progress</span><span className="text-orange-300">{percentage}%</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+        <div className="h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-400 transition-all duration-700" style={{ width: `${percentage}%` }} />
+      </div>
+    </div>
+  );
 };
 
 // Courses that are not built yet are shown as placeholders.
@@ -144,12 +162,13 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ navigateTo, activeCourseId })
                     <span className="flex items-center gap-1.5"><i className="fas fa-clock"></i> {course.totalDuration}</span>
                     <span className="flex items-center gap-1.5"><i className="fas fa-video"></i> AI Tutor Support</span>
                   </div>
+                  {course.isActive && course.id === activeCourseId && <ActiveCourseProgress course={course} />}
                 </div>
 
                 {course.isActive ? (
                   <div className="space-y-3 relative z-10">
                     <button
-                      onClick={() => navigateTo('dashboard', course.id)}
+                      onClick={() => navigateTo('lesson', course.id)}
                       className="w-full py-3.5 rounded-xl font-bold text-sm tracking-wide bg-gradient-to-r from-orange-600 to-orange-500 text-white shadow-lg hover:shadow-orange-500/25 transform hover:scale-[1.02] transition-all flex items-center justify-center group/btn"
                     >
                       {activeCourseId === course.id ? 'Continue Learning' : 'Start Learning Now'}
@@ -183,7 +202,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ navigateTo, activeCourseId })
             <p className="text-lg text-zinc-400 mb-10 leading-relaxed">
               Unlike other platforms where you stare at text, Ecosystem allows you to talk through problems. It's like having a senior engineer sitting right next to you, 24/7.
             </p>
-            <button onClick={() => navigateTo('dashboard')} className="px-8 py-4 rounded-full border border-white/20 hover:bg-white hover:text-black transition-all font-bold text-sm uppercase tracking-widest">
+            <button onClick={() => navigateTo('courses')} className="px-8 py-4 rounded-full border border-white/20 hover:bg-white hover:text-black transition-all font-bold text-sm uppercase tracking-widest">
               Experience the Difference
             </button>
           </div>

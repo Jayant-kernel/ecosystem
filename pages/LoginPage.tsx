@@ -21,7 +21,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ navigateTo }) => {
 
         try {
             await login(email, password);
-            navigateTo('dashboard');
+            navigateTo('courses');
         } catch (err: any) {
             setError(err.message || 'Failed to sign in');
             setIsLoading(false);

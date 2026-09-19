@@ -263,7 +263,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         // Manual edits invalidate any tutor highlight (programmatic typing is guarded by isTypingRef).
         if (!isTypingRef.current) clearHighlight();
     }, [clearHighlight]);
-    const handleBackToDashboard = useCallback(() => navigateTo('dashboard'), [navigateTo]);
+    const handleBackToCourses = useCallback(() => navigateTo('courses'), [navigateTo]);
 
     const [showXPModal, setShowXPModal] = useState(false);
     const [xpGained, setXpGained] = useState(0);
@@ -301,7 +301,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         setShowXPModal(false);
         const currentIndex = allLessons.findIndex(l => l?.id === currentLesson?.id);
         if (currentIndex !== -1 && currentIndex === allLessons.length - 1) {
-            navigateTo('dashboard');
+            navigateTo('courses');
         }
     };
 
@@ -599,7 +599,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                 course={course}
                 completedLessons={progress.completedLessons}
                 currentLessonId={progress.currentLessonId}
-                onBack={handleBackToDashboard}
+                onBack={handleBackToCourses}
                 isOpen={isSidebarOpen}
                 setIsOpen={setIsSidebarOpen}
                 onLessonClick={handleLessonClick}

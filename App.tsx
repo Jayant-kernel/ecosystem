@@ -1,7 +1,6 @@
 
 import React, { Suspense, useState, useCallback, useEffect, useRef } from 'react';
 import LandingPage from './components/CourseSelection';
-import DashboardPage from './pages/DashboardPage';
 import LearningView from './components/LearningView';
 import { DEFAULT_COURSE_ID, getCourseById, isCoursePublic } from './constants';
 import CoursesPage from './pages/CoursesPage';
@@ -13,7 +12,7 @@ import Footer from './components/Footer';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
-export type View = 'landing' | 'courses' | 'dashboard' | 'lesson' | 'explanations' | 'login' | 'signup';
+export type View = 'landing' | 'courses' | 'lesson' | 'explanations' | 'login' | 'signup';
 
 /** Navigate to a view, optionally switching the active course first. */
 export type NavigateFn = (view: View, courseId?: string) => void;
@@ -30,7 +29,7 @@ const MainApp: React.FC = () => {
   const navigateTo = useCallback<NavigateFn>((view, courseId) => {
     const targetCourseId = courseId ?? activeCourseId;
     // Protected routes — skipped for public (no-auth) courses.
-    const protectedViews: View[] = ['dashboard', 'lesson', 'explanations'];
+    const protectedViews: View[] = ['lesson', 'explanations'];
     const bypassAuth = isCoursePublic(targetCourseId);
     if (protectedViews.includes(view) && !user && !loading && !bypassAuth) {
       if (courseId) {
@@ -50,14 +49,14 @@ const MainApp: React.FC = () => {
   // Effect to handle initial load redirection if on a protected route
   useEffect(() => {
       if (!loading) {
-          const protectedViews: View[] = ['dashboard', 'lesson', 'explanations'];
+          const protectedViews: View[] = ['lesson', 'explanations'];
           const bypassAuth = isCoursePublic(activeCourseId);
           if (protectedViews.includes(currentView) && !user && !bypassAuth) {
               setCurrentView('login');
           }
           // Redirect from auth pages if already logged in
           if ((currentView === 'login' || currentView === 'signup') && user) {
-              setCurrentView('dashboard');
+              setCurrentView('courses');
           }
       }
   }, [currentView, user, loading, activeCourseId]);
@@ -76,8 +75,6 @@ const MainApp: React.FC = () => {
         return <LandingPage navigateTo={navigateTo} />;
       case 'courses':
         return <CoursesPage navigateTo={navigateTo} activeCourseId={activeCourseId} />;
-      case 'dashboard':
-        return <DashboardPage navigateTo={navigateTo} activeCourse={activeCourse} />;
       case 'lesson':
         return <LearningView course={activeCourse} navigateTo={navigateTo} />;
       case 'explanations':

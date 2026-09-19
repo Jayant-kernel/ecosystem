@@ -30,7 +30,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ navigateTo }) => {
             await signup(name, email, password);
             // Check if email confirmation is required by Supabase settings.
             // Usually it auto-logs in, but if it doesn't, we might need to prompt user to check email.
-             navigateTo('dashboard');
+             navigateTo('courses');
         } catch (err: any) {
             setError(err.message || 'Failed to create account');
             setIsLoading(false);
