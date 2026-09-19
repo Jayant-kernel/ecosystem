@@ -29,6 +29,29 @@ export const TOOLS = [
     parameters: { type: 'object', properties: {} },
   },
   {
+    name: 'highlightLines',
+    description:
+      'Spotlights exact editor lines while you explain them, so the learner can follow along line by line. Call it with the line range you are currently explaining, every time you move to a new chunk of code.',
+    parameters: {
+      type: 'object',
+      properties: {
+        startLine: {
+          type: 'integer',
+          description: 'First editor line to highlight (1-based).',
+        },
+        endLine: {
+          type: 'integer',
+          description: 'Last editor line to highlight (1-based, inclusive). Use the same value as startLine for a single line.',
+        },
+        note: {
+          type: 'string',
+          description: 'One short spoken sentence about THESE lines, said while they are highlighted.',
+        },
+      },
+      required: ['startLine', 'endLine'],
+    },
+  },
+  {
     name: 'executeCode',
     description: 'Runs the editor code and shows output in the console.',
     parameters: { type: 'object', properties: {} },
@@ -117,7 +140,7 @@ DO NOT:
 - Do not share secrets, tokens, personal data, or hardcoded credentials.`;
 
 export function buildSystemPrompt(context = {}) {
-  const { lessonTitle, objectives, aiMemory, editorCode } = context;
+  const { lessonTitle, moduleTitle, objectives, aiMemory, editorCode } = context;
 
   return `You are Ecosystem, a warm, patient voice mentor who teaches by talking. Your answers are spoken aloud, so keep them concise and natural.
 
@@ -135,12 +158,22 @@ ${TEACHING_PLAYBOOK}
 
 TEACHING TOOLS:
 - Use writeCode to show code in the editor as you explain.
+- After writing code, explain it CHUNK BY CHUNK: call highlightLines with the
+  exact 1-based line range you are talking about, say its one-sentence note
+  while it glows, then move to the next chunk. Never explain the whole file
+  without highlighting.
 - Use readCode ALWAYS before answering questions about their code or debugging.
 - Use executeCode when they want to run their code or see output.
 - Use controlApp for "run the code", "reset this", or "next lesson" voice commands.
 
+LESSON OPENING:
+- When the learner opens a chapter (lesson), greet them by NAMING the chapter
+  and its module, ask if they would like to understand it, then ask ONE opening
+  question about it before explaining. Teach back-and-forth from there.
+
 SESSION CONTEXT:
 - Current lesson: ${lessonTitle || 'None selected'}
+- Module: ${moduleTitle || 'N/A'}
 - Learning objectives: ${objectives || 'N/A'}
 - Learner memory: ${aiMemory || 'New learner, be welcoming.'}
 
@@ -178,6 +211,11 @@ export function toolResultText(name, input, context = {}) {
       return context.editorCode || '// The editor is empty.';
     case 'writeCode':
       return 'Code written to the learner editor.';
+    case 'highlightLines': {
+      const start = Number(input?.startLine) || 1;
+      const end = Number(input?.endLine) || start;
+      return `Lines ${Math.min(start, end)}-${Math.max(start, end)} highlighted.`;
+    }
     case 'executeCode':
       return 'Code execution requested; output will appear in the console.';
     case 'controlApp':

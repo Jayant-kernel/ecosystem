@@ -61,7 +61,7 @@ Parameters:
 
 Resources:
 
-  # ---- API Gateway for browser-facing endpoints (/voice, /session, /execute) ----
+  # ---- API Gateway for browser-facing endpoints (/voice, /session, /intro, /execute) ----
   BackendApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -73,7 +73,7 @@ Resources:
         AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,Authorization'"
 
-  # ---- Voice pipeline: POST /voice (STT -> Bedrock -> TTS), GET /session ----
+  # ---- Voice pipeline: POST /voice (STT -> LLM -> TTS), POST /intro (text -> LLM -> TTS), GET /session ----
   LlmBridgeFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -114,6 +114,12 @@ Resources:
             RestApiId: !Ref BackendApi
             Path: /session
             Method: GET
+        Intro:
+          Type: Api
+          Properties:
+            RestApiId: !Ref BackendApi
+            Path: /intro
+            Method: POST
 
   # ---- Server-side code execution sandbox (POST /execute) ----
   ExecuteCodeFunction:

@@ -414,3 +414,16 @@ html.light .bg-white\/5,
 html.light .bg-white\/10 {
     background-color: rgba(0, 0, 0, 0.04) !important;
 }
+
+/* Tutor line highlight — applied via Monaco decorations when the AI tutor
+   explains specific lines (highlightLines tool). */
+.tutor-highlight-line {
+    background: rgba(249, 115, 22, 0.18);
+    border-left: 3px solid rgba(249, 115, 22, 0.9);
+}
+
+.tutor-highlight-glyph {
+    background: rgba(249, 115, 22, 0.9);
+    width: 4px !important;
+    margin-left: 3px;
+}

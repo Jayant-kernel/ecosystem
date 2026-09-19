@@ -180,6 +180,68 @@ test('session context is reused across turns', async () => {
   assert.ok(secondHistory.some((turn) => turn.content === 'first question'));
 });
 
+function introEvent(body) {
+  return {
+    httpMethod: 'POST',
+    path: '/intro',
+    headers: { 'content-type': 'application/json' },
+    isBase64Encoded: false,
+    body: JSON.stringify(body),
+  };
+}
+
+test('POST /intro greets the chapter without audio', async () => {
+  const provider = fakeProvider('Welcome to Variables! Want to understand it?');
+  const handler = createHandler({
+    fetchImpl: sttFetch('unused'),
+    provider,
+    env: ENV,
+    logger: silentLogger,
+  });
+
+  const res = await handler(introEvent({ lessonTitle: 'Variables', moduleTitle: 'Basics', sessionId: 'intro-1' }));
+  const body = JSON.parse(res.body);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(body.sessionId, 'intro-1');
+  assert.equal(body.response, 'Welcome to Variables! Want to understand it?');
+  assert.equal(body.audio, Buffer.from([1, 2, 3]).toString('base64'));
+  assert.deepEqual(body.toolCalls, []);
+  assert.equal(provider.calls.length, 1);
+  assert.match(provider.calls[0].transcript, /Variables/);
+  assert.match(provider.calls[0].transcript, /Basics/);
+});
+
+test('POST /intro requires a lesson title', async () => {
+  const handler = createHandler({
+    fetchImpl: sttFetch('unused'),
+    provider: fakeProvider(),
+    env: ENV,
+    logger: silentLogger,
+  });
+
+  const res = await handler(introEvent({}));
+  assert.equal(res.statusCode, 400);
+  assert.equal(JSON.parse(res.body).error.code, 'bad_request');
+});
+
+test('POST /intro appends the chapter exchange to session history', async () => {
+  const provider = fakeProvider('Hi there.');
+  const handler = createHandler({
+    fetchImpl: sttFetch('unused'),
+    provider,
+    env: ENV,
+    logger: silentLogger,
+  });
+
+  await handler(introEvent({ lessonTitle: 'Loops', sessionId: 'intro-ctx' }));
+  await handler(jsonEvent({ audio: Buffer.from('a').toString('base64'), sessionId: 'intro-ctx' }));
+
+  const secondHistory = provider.calls[1].history;
+  assert.ok(secondHistory.some((turn) => turn.content === '[Opened chapter: Loops]'));
+  assert.ok(secondHistory.some((turn) => turn.content === 'Hi there.'));
+});
+
 test('GET /session issues an id, unknown routes 404, OPTIONS 204', async () => {
   const handler = createHandler({ fetchImpl: sttFetch('x'), provider: fakeProvider(), env: ENV, logger: silentLogger, uuid: () => 'fixed-id' });
 

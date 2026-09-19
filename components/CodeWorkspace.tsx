@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import EditorPanel from './EditorPanel';
 import ConsolePanel from './ConsolePanel';
 import ExercisePanel from './ExercisePanel';
@@ -13,6 +13,9 @@ interface CodeWorkspaceProps {
     onRunTests: () => TestResult[];
     onRunCode: () => void;
     onResetCode: () => void;
+    onMountEditor?: (editor: any, monaco: any) => void;
+    /** Bumped by the parent when the tutor runs code, so the console tab takes over. */
+    consoleTabSignal?: number;
 }
 
 type Tab = 'console' | 'exercises';
@@ -24,9 +27,16 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
     exercises,
     onRunTests,
     onRunCode,
-    onResetCode
+    onResetCode,
+    onMountEditor,
+    consoleTabSignal = 0
 }) => {
     const [activeTab, setActiveTab] = useState<Tab>('console');
+
+    // When the AI tutor takes over the console, bring its tab to the front.
+    useEffect(() => {
+        if (consoleTabSignal > 0) setActiveTab('console');
+    }, [consoleTabSignal]);
 
     return (
         <div className="flex flex-col h-full gap-4">
@@ -34,7 +44,7 @@ const CodeWorkspace: React.FC<CodeWorkspaceProps> = ({
                 {/* Editor Header decoration */}
                 <div className="h-1 w-full bg-gradient-to-r from-orange-500/20 to-purple-500/20"></div>
                 <div className="flex-grow relative">
-                    <EditorPanel code={code} onCodeChange={onCodeChange} />
+                    <EditorPanel code={code} onCodeChange={onCodeChange} onMountEditor={onMountEditor} />
                 </div>
             </div>
 

@@ -43,6 +43,63 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     const editorCodeRef = useRef(editorCode);
     useEffect(() => { editorCodeRef.current = editorCode; }, [editorCode]);
 
+    // Monaco editor instance (captured on mount) for tutor line highlights.
+    const editorApiRef = useRef<{ editor: any; monaco: any } | null>(null);
+    const highlightDecoRef = useRef<string[]>([]);
+    const pendingHighlightRef = useRef<{ startLine: number; endLine: number } | null>(null);
+    const isTypingRef = useRef(false);
+    const [highlight, setHighlight] = useState<{ startLine: number; endLine: number; revision: number } | null>(null);
+    // Bumped when the tutor runs code so the console tab takes over.
+    const [consoleTabSignal, setConsoleTabSignal] = useState(0);
+
+    const clearHighlight = useCallback(() => {
+        pendingHighlightRef.current = null;
+        setHighlight(null);
+        const api = editorApiRef.current;
+        if (api && highlightDecoRef.current.length) {
+            try {
+                highlightDecoRef.current = api.editor.deltaDecorations(highlightDecoRef.current, []);
+            } catch {
+                /* editor torn down — ignore */
+            }
+        }
+    }, []);
+
+    const applyHighlight = useCallback((startLine: number, endLine: number) => {
+        let s = Math.max(1, Math.floor(Number(startLine)) || 1);
+        let e = Math.max(1, Math.floor(Number(endLine)) || 1);
+        if (s > e) { const t = s; s = e; e = t; }
+        pendingHighlightRef.current = { startLine: s, endLine: e };
+        setHighlight((prev) => ({ startLine: s, endLine: e, revision: (prev?.revision ?? 0) + 1 }));
+        const api = editorApiRef.current;
+        if (!api) return;
+        try {
+            const { editor, monaco } = api;
+            const model = editor.getModel();
+            const lineCount = model ? model.getLineCount() : e;
+            const cs = Math.min(s, Math.max(1, lineCount));
+            const ce = Math.min(e, Math.max(1, lineCount));
+            highlightDecoRef.current = editor.deltaDecorations(highlightDecoRef.current, [{
+                range: new monaco.Range(cs, 1, ce, model ? model.getLineMaxColumn(ce) : 1),
+                options: {
+                    isWholeLine: true,
+                    className: 'tutor-highlight-line',
+                    overviewRuler: { color: 'rgba(249,115,22,0.9)', position: monaco.editor.OverviewRulerLane.Right },
+                },
+            }]);
+            editor.revealLinesInCenter(cs, ce);
+        } catch {
+            /* editor not ready — pending highlight re-applies when typing finishes */
+        }
+    }, []);
+
+    const handleMountEditor = useCallback((editor: any, monaco: any) => {
+        editorApiRef.current = { editor, monaco };
+        // Re-apply any active highlight (e.g. after a remount).
+        const pending = pendingHighlightRef.current;
+        if (pending) applyHighlight(pending.startLine, pending.endLine);
+    }, [applyHighlight]);
+
     // Handle window resize to auto-manage sidebar state
     useEffect(() => {
         const handleResize = () => {
@@ -56,7 +113,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const typeCode = (code: string) => {
+    const typeCode = (code: string, onDone?: () => void) => {
+        isTypingRef.current = true;
         setTimeout(() => {
             let i = 0;
             const interval = setInterval(() => {
@@ -65,6 +123,11 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                     i++;
                 } else {
                     clearInterval(interval);
+                    isTypingRef.current = false;
+                    // Re-apply any highlight the tutor requested while typing.
+                    const pending = pendingHighlightRef.current;
+                    if (pending) applyHighlight(pending.startLine, pending.endLine);
+                    onDone?.();
                 }
             }, 15);
         }, 50);
@@ -109,7 +172,11 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     // Stable references so memoized children (Monaco editor, sidebar) do not
     // re-render when the transcript streams in.
     const exercises = useMemo(() => currentLesson?.content.exercises ?? [], [currentLesson]);
-    const handleCodeChange = useCallback((val?: string) => setEditorCode(val || ''), []);
+    const handleCodeChange = useCallback((val?: string) => {
+        setEditorCode(val || '');
+        // Manual edits invalidate any tutor highlight (programmatic typing is guarded by isTypingRef).
+        if (!isTypingRef.current) clearHighlight();
+    }, [clearHighlight]);
     const handleBackToDashboard = useCallback(() => navigateTo('dashboard'), [navigateTo]);
 
     const [showXPModal, setShowXPModal] = useState(false);
@@ -154,15 +221,40 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
 
     const handleToolCall = useCallback(async (functionCalls: TutorToolCall[]): Promise<TutorToolResponse[]> => {
         const responses: TutorToolResponse[] = [];
+        // writeCode first: fresh code invalidates any old highlight. Only wait
+        // for typing to finish when later calls in the same batch need the
+        // final code (e.g. executeCode); otherwise keep audio latency low.
+        const writeCall = functionCalls.find((fc) => fc.name === 'writeCode');
+        const needsSettledCode = functionCalls.some((fc) =>
+            fc.name === 'executeCode' ||
+            (fc.name === 'controlApp' && (fc.args?.action as string) === 'run_code')
+        );
+        if (writeCall) {
+            const code = (writeCall.args?.code as string) || '';
+            clearHighlight();
+            pendingHighlightRef.current = null;
+            setEditorCode('');
+            if (needsSettledCode) {
+                await new Promise<void>((resolve) => typeCode(code, resolve));
+            } else {
+                typeCode(code);
+            }
+            responses.push({ id: writeCall.id, name: writeCall.name, response: { result: "Code written successfully." } });
+        }
         for (const fc of functionCalls) {
+            if (fc.name === 'writeCode') continue;
             switch (fc.name) {
-                case 'writeCode':
-                    setEditorCode('');
-                    typeCode((fc.args?.code as string) || '');
-                    responses.push({ id: fc.id, name: fc.name, response: { result: "Code written successfully." } });
+                case 'highlightLines': {
+                    const s = Number(fc.args?.startLine) || 1;
+                    const e = Number(fc.args?.endLine) || s;
+                    applyHighlight(s, e);
+                    const lo = Math.min(s, e), hi = Math.max(s, e);
+                    responses.push({ id: fc.id, name: fc.name, response: { result: `Lines ${lo}-${hi} highlighted.` } });
                     break;
+                }
                 case 'executeCode':
-                    handleRunCode();
+                    await handleRunCode();
+                    setConsoleTabSignal((n) => n + 1);
                     responses.push({ id: fc.id, name: fc.name, response: { result: "Code executed." } });
                     break;
                 case 'readCode':
@@ -172,7 +264,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                     const action = fc.args?.action as string;
                     let resultMsg = `Action ${action} triggered.`;
                     if (action === 'run_code') {
-                        handleRunCode();
+                        await handleRunCode();
+                        setConsoleTabSignal((n) => n + 1);
                     } else if (action === 'reset_code') {
                         handleResetCode();
                     } else if (action === 'next_lesson') {
@@ -184,7 +277,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
             }
         }
         return responses;
-    }, [handleRunCode, handleResetCode, handleCompleteLesson]);
+    }, [handleRunCode, handleResetCode, handleCompleteLesson, applyHighlight, clearHighlight]);
 
     const onStreamMessage = useCallback((newTranscript: Transcript) => {
         setTranscript(newTranscript);
@@ -220,8 +313,73 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         startSession,
         stopSession,
         toggleMute,
-        sessionError
+        sessionError,
+        ensureSessionId,
+        pushHistory,
+        resetConversation,
+        playExternalAudio
     } = useVoiceTutor(onStreamMessage, handleToolCall, progress, currentLesson, editorCodeRef);
+
+    // Parent module of the open chapter (for the tutor's greeting).
+    const currentModule = useMemo(() => {
+        if (!currentLesson) return null;
+        return course.modules.find((m) => m.lessons.some((l) => l.id === currentLesson.id)) ?? null;
+    }, [course.modules, currentLesson]);
+
+    // Chapter intro state, keyed by lesson.
+    const [introState, setIntroState] = useState<{ lessonId: string; loading: boolean } | null>(null);
+
+    // A new chapter means a fresh conversation so the tutor greets THIS chapter.
+    const currentLessonId = currentLesson?.id;
+    useEffect(() => {
+        setTranscript({ user: '', ai: '', isFinal: false });
+        resetConversation();
+        setIntroState(null);
+    }, [currentLessonId, resetConversation]);
+
+    const handleRequestIntro = useCallback(async () => {
+        if (!currentLesson || introState?.loading) return;
+        if (!voiceService.isConfigured()) {
+            setTranscript({
+                user: '',
+                ai: 'Voice backend is not configured. Set VITE_API_BASE_URL to enable the tutor voice.',
+                isFinal: true,
+            });
+            return;
+        }
+        setIntroState({ lessonId: currentLesson.id, loading: true });
+        try {
+            const sessionId = await ensureSessionId();
+            const result = await voiceService.requestIntro({
+                sessionId,
+                lessonTitle: currentLesson.title,
+                moduleTitle: currentModule?.title,
+                objectives: currentLesson.objectives?.join('; '),
+                openingQuestion: currentLesson.content.oralQuestions?.[0]?.prompt,
+                lessonSummary: currentLesson.content.explanations?.[0],
+                aiMemory: progress.aiMemory?.slice(-3).join('; '),
+                editorCode: editorCodeRef.current,
+            });
+            if (result.toolCalls?.length) {
+                await handleToolCall(result.toolCalls.map((call, index) => ({
+                    id: `intro-tool-${index}`,
+                    name: call.name,
+                    args: call.args || {},
+                })));
+            }
+            setTranscript({ user: '', ai: result.response, isFinal: true });
+            pushHistory(`[Opened chapter ${currentLesson.title}]`, result.response);
+            await playExternalAudio(result.audio, result.audioMimeType);
+            setIntroState({ lessonId: currentLesson.id, loading: false });
+        } catch (error: any) {
+            setIntroState({ lessonId: currentLesson.id, loading: false });
+            setTranscript({
+                user: '',
+                ai: `Sorry, I could not introduce this chapter: ${error?.message || error}`,
+                isFinal: true,
+            });
+        }
+    }, [currentLesson, currentModule, editorCodeRef, ensureSessionId, handleToolCall, introState?.loading, playExternalAudio, progress.aiMemory, pushHistory]);
 
     const handleLessonClick = useCallback(async (lessonId: string) => {
         await updateProgress({ currentLessonId: lessonId });
@@ -277,6 +435,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                             transcript={transcript}
                             sessionError={sessionError}
                             currentLesson={currentLesson}
+                            onRequestIntro={currentLesson ? handleRequestIntro : null}
+                            introLoading={introState?.loading ?? false}
                         />
                     </div>
                     <div className="flex-1 md:h-full min-h-0 animate-fade-in-up delay-100">
@@ -288,6 +448,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                             onRunTests={handleRunTests}
                             onRunCode={handleRunCode}
                             onResetCode={handleResetCode}
+                            onMountEditor={handleMountEditor}
+                            consoleTabSignal={consoleTabSignal}
                         />
                     </div>
                 </div>

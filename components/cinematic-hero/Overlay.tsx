@@ -108,7 +108,13 @@ export default function Overlay({ navigateTo, canvasWrapRef }: OverlayProps): JS
   }, []);
 
   return (
-    <div ref={rootRef} className="pointer-events-none absolute inset-0 z-10">
+    <div ref={rootRef} className="absolute inset-0 z-10">
+      {/* Static cinematic vignette (pure CSS, zero GPU loop cost). */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.5) 100%)' }}
+      />
       <div ref={hintRef} className="absolute inset-x-0 bottom-10 flex justify-center">
         <div className="rounded-full border border-white/10 bg-black/55 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-300 backdrop-blur-sm">
           Scroll to move the camera

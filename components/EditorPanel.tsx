@@ -5,9 +5,10 @@ interface EditorPanelProps {
   code: string;
   onCodeChange: (value: string | undefined) => void;
   readOnly?: boolean;
+  onMountEditor?: (editor: any, monaco: any) => void;
 }
 
-const EditorPanel: React.FC<EditorPanelProps> = ({ code, onCodeChange, readOnly = false }) => {
+const EditorPanel: React.FC<EditorPanelProps> = ({ code, onCodeChange, readOnly = false, onMountEditor }) => {
   return (
     <div className="bg-[#1C1C1C] rounded-lg overflow-hidden h-full border border-[#262626] relative">
       <div className="absolute inset-0">
@@ -17,6 +18,7 @@ const EditorPanel: React.FC<EditorPanelProps> = ({ code, onCodeChange, readOnly 
           theme="vs-dark"
           value={code}
           onChange={onCodeChange}
+          onMount={onMountEditor}
           options={{
             minimap: { enabled: false },
             fontSize: 14,

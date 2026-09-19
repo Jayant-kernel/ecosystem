@@ -33,6 +33,26 @@ export interface ExecutionResult {
     results?: TestResult[];
 }
 
+export interface IntroRequest {
+    sessionId?: string;
+    lessonTitle: string;
+    moduleTitle?: string;
+    objectives?: string;
+    openingQuestion?: string;
+    lessonSummary?: string;
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    aiMemory?: string;
+    editorCode?: string;
+}
+
+export interface IntroResult {
+    sessionId: string;
+    response: string;
+    audio: string;
+    audioMimeType: string;
+    toolCalls: VoiceToolCall[];
+}
+
 export const voiceService = {
     /** Whether an AWS backend base URL is configured for this build. */
     isConfigured: (): boolean => Boolean(API_BASE_URL),
@@ -74,6 +94,30 @@ export const voiceService = {
             throw new Error(message);
         }
         return (await res.json()) as VoiceResult;
+    },
+
+    /**
+     * Ask the tutor to introduce a chapter (text-in, no microphone needed).
+     * Runs the same tutor + TTS pipeline as voice, minus STT.
+     */
+    async requestIntro(request: IntroRequest): Promise<IntroResult> {
+        if (!API_BASE_URL) throw new Error('Voice backend not configured. Set VITE_API_BASE_URL.');
+        const res = await fetch(`${API_BASE_URL}/intro`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+        if (!res.ok) {
+            let message = `Intro request failed (${res.status})`;
+            try {
+                const body = await res.json();
+                if (body?.error?.message) message = body.error.message;
+            } catch {
+                /* keep default message */
+            }
+            throw new Error(message);
+        }
+        return (await res.json()) as IntroResult;
     },
 
     /** Execute learner code in the server-side sandbox. */
