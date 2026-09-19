@@ -792,7 +792,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => { 
     const reduceMotion = useReducedMotion();
     const rightPaneRef = useRef<HTMLDivElement | null>(null);
     const codeLayerRef = useRef<HTMLDivElement | null>(null);
-    const transition = { duration: reduceMotion ? 0 : 2, times: [0, 0.2, 0.66, 1], ease: 'easeInOut' as const };
+    const transition = { duration: reduceMotion ? 0 : 3.5, times: [0, 0.2, 0.66, 1], ease: 'easeInOut' as const };
     useEffect(() => {
         const el = codeLayerRef.current as (HTMLDivElement & { inert?: boolean }) | null;
         if (el) el.inert = showVisual;
