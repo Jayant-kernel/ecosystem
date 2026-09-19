@@ -51,7 +51,8 @@ export function createBedrockProvider(env = process.env, deps = {}) {
           system: [{ text: system }],
           messages,
           toolConfig,
-          inferenceConfig: { maxTokens: 512, temperature: 0.4 },
+          // Short by design: this is spoken back, and long text costs latency.
+          inferenceConfig: { maxTokens: 220, temperature: 0.4 },
         });
 
         const content = response?.output?.message?.content || [];

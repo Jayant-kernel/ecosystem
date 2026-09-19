@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Lesson, Progress, Transcript, TutorToolCall, TutorToolResponse } from '../types';
 import { voiceService, base64ToBlob } from '../services/voiceService';
+import { audioLevels, resetAudioLevels, MIC_REFERENCE, SPEAKER_REFERENCE } from '../utils/audioLevels';
 
 const MAX_HISTORY_TURNS = 8;
 
@@ -72,6 +73,7 @@ export const useVoiceTutor = (
   const sessionIdRef = useRef<string | null>(null);
   const historyRef = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const finishPlaybackRef = useRef<(() => void) | null>(null);
   const introPlayedRef = useRef<string | null>(null);
 
@@ -79,6 +81,8 @@ export const useVoiceTutor = (
   const handsFreeRef = useRef(handsFree);
   const isMutedRef = useRef(isMuted);
   const stopSessionRef = useRef<() => void>(() => {});
+  const beginRecordingRef = useRef<() => Promise<void>>(async () => {});
+  const unmountedRef = useRef(false);
   const vadRef = useRef<{
     ctx: AudioContext;
     analyser: AnalyserNode;
@@ -151,7 +155,41 @@ export const useVoiceTutor = (
       audioElRef.current = audio;
       setIsPlaying(true);
 
+      // Route the tutor's voice through an analyser so the orb can pulse with
+      // the actual speech rather than a timed guess.
+      let analyser: AnalyserNode | null = null;
+      let raf = 0;
+      try {
+        const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+        if (Ctx) {
+          if (!audioContextRef.current) audioContextRef.current = new Ctx();
+          const ctx = audioContextRef.current;
+          if (ctx.state === 'suspended') void ctx.resume();
+          const source = ctx.createMediaElementSource(audio);
+          analyser = ctx.createAnalyser();
+          analyser.fftSize = 1024;
+          source.connect(analyser);
+          analyser.connect(ctx.destination);
+        }
+      } catch {
+        analyser = null;
+      }
+
+      const samples = analyser ? new Float32Array(analyser.fftSize) : null;
+      const tick = () => {
+        if (analyser && samples) {
+          analyser.getFloatTimeDomainData(samples);
+          let sum = 0;
+          for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+          audioLevels.speaker = Math.min(1, Math.sqrt(sum / samples.length) / SPEAKER_REFERENCE);
+        }
+        raf = requestAnimationFrame(tick);
+      };
+      if (analyser) raf = requestAnimationFrame(tick);
+
       const finish = () => {
+        cancelAnimationFrame(raf);
+        audioLevels.speaker = 0;
         URL.revokeObjectURL(url);
         if (audioElRef.current === audio) audioElRef.current = null;
         finishPlaybackRef.current = null;
@@ -169,6 +207,7 @@ export const useVoiceTutor = (
   /** Tear down the voice-activity watcher (safe to call at any time). */
   const stopVad = useCallback(() => {
     const vad = vadRef.current;
+    audioLevels.mic = 0;
     if (!vad) return;
     vadRef.current = null;
     cancelAnimationFrame(vad.raf);
@@ -220,6 +259,9 @@ export const useVoiceTutor = (
         for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
         const rms = Math.sqrt(sum / samples.length);
         const now = performance.now();
+
+        // Feed the orb. Raw (undamped) — the orb smooths it per frame.
+        audioLevels.mic = Math.min(1, rms / MIC_REFERENCE);
 
         // While muted we cannot hear them, so never auto-stop on silence.
         const muted = isMutedRef.current;
@@ -311,6 +353,13 @@ export const useVoiceTutor = (
       if (result.audio) {
         await playAudio(result.audio, result.audioMimeType);
       }
+
+      // Hands-free: as soon as the tutor stops speaking, hand the microphone
+      // straight back. Only when the learner actually said something, so a
+      // silent room cannot loop "I didn't catch that" forever.
+      if (handsFreeRef.current && !unmountedRef.current && result.transcript) {
+        await beginRecordingRef.current();
+      }
     } catch (error: any) {
       setSessionError(error?.message || 'Voice request failed');
     } finally {
@@ -343,21 +392,14 @@ export const useVoiceTutor = (
     }
   }, [ensureSession, lessonContext, playAudio]);
 
-  const startSession = useCallback(async () => {
-    if (isRecording || isProcessing) return;
-
-    if (!voiceService.isConfigured()) {
-      setSessionError('Voice backend not configured (set VITE_API_BASE_URL).');
-      return;
-    }
-
-    setSessionError(null);
-
-    // Speak first, once per lesson, before opening the microphone.
-    if (!introPlayedRef.current) {
-      introPlayedRef.current = currentLesson?.id ?? 'open';
-      await playIntro();
-    }
+  /**
+   * Open the microphone and start a fresh turn. Used both for the first tap and
+   * for the hands-free hand-back once the tutor has finished speaking.
+   */
+  const beginRecording = useCallback(async () => {
+    if (!voiceService.isConfigured()) return;
+    const existing = recorderRef.current;
+    if (existing && existing.state !== 'inactive') return;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -391,7 +433,28 @@ export const useVoiceTutor = (
           : error?.message || 'Could not access the microphone.',
       );
     }
-  }, [currentLesson?.id, isProcessing, isRecording, playIntro, releaseStream, sendRecording, startVad]);
+  }, [releaseStream, sendRecording, startVad]);
+
+  beginRecordingRef.current = beginRecording;
+
+  const startSession = useCallback(async () => {
+    if (isRecording || isProcessing) return;
+
+    if (!voiceService.isConfigured()) {
+      setSessionError('Voice backend not configured (set VITE_API_BASE_URL).');
+      return;
+    }
+
+    setSessionError(null);
+
+    // Speak first, once per lesson, before opening the microphone.
+    if (!introPlayedRef.current) {
+      introPlayedRef.current = currentLesson?.id ?? 'open';
+      await playIntro();
+    }
+
+    await beginRecording();
+  }, [beginRecording, currentLesson?.id, isProcessing, isRecording, playIntro]);
 
   const stopSession = useCallback(() => {
     stopVad();
@@ -428,8 +491,10 @@ export const useVoiceTutor = (
   }, [isMuted]);
 
   useEffect(() => () => {
+    unmountedRef.current = true;
     stopVad();
     stopPlayback();
+    resetAudioLevels();
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     releaseStream();

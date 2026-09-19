@@ -102,7 +102,37 @@ test('TTS posts text and returns audio bytes', async () => {
   assert.equal(result.buffer.length, 3);
   assert.equal(result.mimeType, 'audio/mpeg');
   assert.match(captured.url, /\/text-to-speech\/voice123/);
-  assert.equal(JSON.parse(captured.options.body).model_id, 'eleven_flash_v2_5');
+  const sent = JSON.parse(captured.options.body);
+  assert.equal(sent.model_id, 'eleven_turbo_v2_5');
+  // Deliberate delivery: slower than 1.0, expressive, speaker boost on.
+  assert.ok(sent.voice_settings.speed < 1, 'speed must be below 1 for a calmer read');
+  assert.equal(sent.voice_settings.use_speaker_boost, true);
+  assert.ok(sent.voice_settings.style > 0, 'style must be set for emotion');
+  assert.ok(sent.voice_settings.stability < 0.5, 'lower stability is more expressive');
+});
+
+test('TTS falls back to safe settings when a model rejects style/speed', async () => {
+  const bodies = [];
+  const fetchImpl = async (url, options) => {
+    bodies.push(JSON.parse(options.body));
+    if (bodies.length === 1) {
+      return { ok: false, status: 400, text: async () => 'unsupported setting' };
+    }
+    return {
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => new Uint8Array([1]).buffer,
+      headers: { get: () => 'audio/mpeg' },
+    };
+  };
+
+  const result = await textToSpeech('hi', { apiKey: 'sk_test', voiceId: 'v', fetchImpl });
+
+  assert.equal(result.buffer.length, 1);
+  assert.equal(bodies.length, 2, 'must retry once');
+  assert.equal(bodies[0].voice_settings.speed !== undefined, true);
+  assert.equal(bodies[1].voice_settings.speed, undefined, 'retry drops speed');
+  assert.equal(bodies[1].voice_settings.style, undefined, 'retry drops style');
 });
 
 test('TTS requires a voice id', async () => {

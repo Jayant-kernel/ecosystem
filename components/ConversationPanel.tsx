@@ -5,6 +5,8 @@ import { Transcript, Lesson } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useUserNotes } from '../hooks/useUserNotes';
 import FlowDiagram from './FlowDiagram';
+import TutorOrb from './tutor-orb/TutorOrb';
+import type { OrbState } from './tutor-orb/types';
 
 interface ConversationPanelProps {
     isSessionActive: boolean;
@@ -91,15 +93,17 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
         }
     };
 
-    let micButtonState = 'idle';
-    if (isConnecting) micButtonState = 'connecting';
-    else if (sessionError) micButtonState = 'error';
-    else if (isSessionActive) {
-        if (isMuted) micButtonState = 'muted';
-        else if (isSpeaking) micButtonState = 'speaking'; // AI speaking overrides listening visually
-        else if (isListening) micButtonState = 'listening';
-        else micButtonState = 'active';
-    }
+    // The orb's state is derived from the existing session flags — the orb
+    // itself owns no voice logic.
+    const orbState: OrbState = sessionError
+        ? 'error'
+        : isConnecting
+            ? 'thinking'
+            : isSpeaking
+                ? 'speaking'
+                : isSessionActive
+                    ? 'listening'
+                    : 'idle';
 
     const getStatusText = () => {
         if (sessionError) return sessionError;
@@ -107,7 +111,7 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
         if (isSessionActive) {
             if (isMuted) return 'Mic Muted (Alt+M)';
             if (isSpeaking) return 'AI Speaking (Auto-Muted)';
-            if (isListening) return handsFree ? 'Listening... (auto-stops when you pause)' : 'Listening...';
+            if (isListening) return handsFree ? 'Listening... (hands-free)' : 'Listening...';
             return 'Session Active';
         }
         return 'Tap to Start';
@@ -233,62 +237,51 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
                             )}
                         </div>
 
-                        {/* Mic Controls */}
+                        {/* Voice controls: the orb replaces the microphone button. */}
                         <div className="p-4 border-t border-white/5 bg-black/20 flex-shrink-0">
-                            <div className="flex items-center justify-center gap-6">
-                                <button
-                                    onClick={toggleMute}
-                                    className={`p-3 rounded-full transition-all ${isMuted ? 'bg-red-500/20 text-red-400' : 'hover:bg-white/5 text-zinc-400'}`}
-                                    title="Mute (Alt+M)"
-                                    disabled={!isSessionActive}
-                                >
-                                    <motion.span
-                                        key={isMuted ? 'muted' : 'unmuted'}
-                                        initial={{ scale: 0.5, rotate: isMuted ? -90 : 90, opacity: 0 }}
-                                        animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                                        transition={{ duration: 0.25, ease: 'easeOut' }}
-                                        className="flex items-center justify-center"
+                            <div className="flex flex-col items-center gap-3">
+                                <TutorOrb state={orbState} onToggle={handleMicClick} size={196} />
+
+                                <p className="max-w-[260px] text-center text-[10px] font-medium uppercase leading-relaxed tracking-widest text-zinc-500">
+                                    {getStatusText()}
+                                </p>
+
+                                <div className="flex items-center justify-center gap-2">
+                                    <button
+                                        onClick={toggleMute}
+                                        disabled={!isSessionActive}
+                                        title="Mute (Alt+M)"
+                                        className={`flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors disabled:opacity-40 ${
+                                            isMuted
+                                                ? 'border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20'
+                                                : 'border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200'
+                                        }`}
                                     >
-                                        <i className={`fas ${isMuted ? 'fa-microphone-slash' : 'fa-microphone'}`}></i>
-                                    </motion.span>
-                                </button>
+                                        <motion.span
+                                            key={isMuted ? 'muted' : 'unmuted'}
+                                            initial={{ scale: 0.5, rotate: isMuted ? -90 : 90, opacity: 0 }}
+                                            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                                            transition={{ duration: 0.25, ease: 'easeOut' }}
+                                            className="flex items-center justify-center"
+                                        >
+                                            <i className={`fas ${isMuted ? 'fa-microphone-slash' : 'fa-microphone'}`}></i>
+                                        </motion.span>
+                                        {isMuted ? 'Muted' : 'Mute'}
+                                    </button>
 
-                                <button
-                                    onClick={handleMicClick}
-                                    className={`
-                                        w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 relative
-                                        ${micButtonState === 'connecting' ? 'bg-zinc-700 animate-pulse' : ''}
-                                        ${micButtonState === 'error' ? 'bg-red-500' : ''}
-                                        ${micButtonState === 'active' ? 'bg-gradient-to-r from-orange-500 to-red-500 hover:scale-105 shadow-orange-500/30' : ''}
-                                        ${micButtonState === 'listening' ? 'bg-gradient-to-r from-orange-500 to-red-500 scale-110 shadow-orange-500/50 ring-4 ring-orange-500/20' : ''}
-                                        ${micButtonState === 'speaking' ? 'bg-indigo-500 ring-4 ring-indigo-500/20' : ''}
-                                        ${micButtonState === 'idle' ? 'bg-zinc-800 border border-white/10 hover:bg-zinc-700 hover:border-white/20' : ''}
-                                        ${micButtonState === 'muted' ? 'bg-gray-600 opacity-50' : ''}
-                                    `}
-                                >
-                                    {micButtonState === 'connecting' && <i className="fas fa-spinner fa-spin text-xl text-white"></i>}
-                                    {micButtonState === 'error' && <i className="fas fa-exclamation-triangle text-xl text-white"></i>}
-                                    {(micButtonState === 'active' || micButtonState === 'listening' || micButtonState === 'speaking') && <i className="fas fa-stop text-2xl text-white"></i>}
-                                    {micButtonState === 'idle' && <i className="fas fa-microphone text-2xl text-white/80"></i>}
-                                    {micButtonState === 'muted' && <i className="fas fa-microphone-slash text-2xl text-white"></i>}
-                                </button>
-
-                                <div className="w-10"></div> {/* Spacer for balance */}
-                            </div>
-                            <p className="text-center text-[10px] text-zinc-600 mt-3 font-medium uppercase tracking-widest">{getStatusText()}</p>
-                            <div className="mt-2 flex justify-center">
-                                <button
-                                    onClick={toggleHandsFree}
-                                    title="End the turn automatically when you stop speaking"
-                                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                                        handsFree
-                                            ? 'border-orange-500/30 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20'
-                                            : 'border-white/10 bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300'
-                                    }`}
-                                >
-                                    <i className={`fas ${handsFree ? 'fa-wand-magic-sparkles' : 'fa-hand-pointer'}`}></i>
-                                    Auto-stop {handsFree ? 'on' : 'off'}
-                                </button>
+                                    <button
+                                        onClick={toggleHandsFree}
+                                        title="Hands-free: stops listening when you pause, and reopens the mic when the tutor finishes speaking"
+                                        className={`flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                                            handsFree
+                                                ? 'border-orange-500/30 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20'
+                                                : 'border-white/10 bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300'
+                                        }`}
+                                    >
+                                        <i className={`fas ${handsFree ? 'fa-wand-magic-sparkles' : 'fa-hand-pointer'}`}></i>
+                                        Hands-free {handsFree ? 'on' : 'off'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

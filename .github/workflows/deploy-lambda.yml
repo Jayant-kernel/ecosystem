@@ -111,4 +111,9 @@ jobs:
             --parameter-overrides \
               ElevenLabsApiKey="${{ secrets.ELEVENLABS_API_KEY }}" \
               ElevenLabsVoiceId="${{ secrets.ELEVENLABS_VOICE_ID }}" \
-              GeminiApiKey="${{ secrets.GEMINI_API_KEY }}"
+              GeminiApiKey="${{ secrets.GEMINI_API_KEY }}" \
+              TtsModelId=eleven_turbo_v2_5 \
+              TtsOutputFormat=mp3_44100_64 \
+              TtsSpeed=0.98 \
+              TtsStability=0.3 \
+              TtsStyle=0.45

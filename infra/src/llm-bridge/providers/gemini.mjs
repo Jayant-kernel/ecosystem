@@ -54,7 +54,8 @@ async function callGemini(ai, { model, contents, system, functionDeclarations })
       config: {
         systemInstruction: system,
         temperature: 0.4,
-        maxOutputTokens: 512,
+        // Short by design: this is spoken back, and long text costs latency.
+        maxOutputTokens: 220,
         tools: [{ functionDeclarations }],
       },
     });

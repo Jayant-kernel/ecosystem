@@ -103,6 +103,39 @@ export async function speechToText(audioBuffer, mimeType, options = {}) {
   return data.text.trim();
 }
 
+const clamp01 = (value, fallback) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
+};
+
+const clampSpeed = (value, fallback) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(1.2, Math.max(0.7, n)) : fallback;
+};
+
+export const DEFAULT_TTS_MODEL = 'eleven_turbo_v2_5';
+export const DEFAULT_TTS_OUTPUT_FORMAT = 'mp3_44100_64';
+
+/**
+ * Delivery settings, all env-tunable.
+ *
+ * Low `stability` + some `style` is what produces the rise and fall of real
+ * speech instead of a flat read; `use_speaker_boost` keeps quiet syllables
+ * audible; `speed` is nudged below 1 so the tutor does not race the learner.
+ */
+function voiceSettingsFor(env) {
+  return {
+    stability: clamp01(env.TTS_STABILITY, 0.3),
+    similarity_boost: clamp01(env.TTS_SIMILARITY, 0.75),
+    style: clamp01(env.TTS_STYLE, 0.45),
+    use_speaker_boost: true,
+    speed: clampSpeed(env.TTS_SPEED, 0.98),
+  };
+}
+
+/** The universally supported pair, used if a model rejects style/speed. */
+const SAFE_VOICE_SETTINGS = { stability: 0.4, similarity_boost: 0.75 };
+
 /**
  * response text -> audio bytes.
  */
@@ -110,7 +143,9 @@ export async function textToSpeech(text, options = {}) {
   const {
     apiKey = process.env.ELEVENLABS_API_KEY,
     voiceId = process.env.ELEVENLABS_VOICE_ID,
-    modelId = process.env.TTS_MODEL_ID || 'eleven_flash_v2_5',
+    modelId = process.env.TTS_MODEL_ID || DEFAULT_TTS_MODEL,
+    outputFormat = process.env.TTS_OUTPUT_FORMAT || DEFAULT_TTS_OUTPUT_FORMAT,
+    settings = null,
     fetchImpl = fetch,
     timeoutMs = 30000,
   } = options;
@@ -119,27 +154,35 @@ export async function textToSpeech(text, options = {}) {
   if (!voiceId) throw new ConfigError('ELEVENLABS_VOICE_ID is not set');
   if (!text || !text.trim()) throw new BadRequestError('Cannot synthesize empty text');
 
-  const url = `${TTS_BASE_URL}/${encodeURIComponent(voiceId)}?output_format=mp3_44100_128`;
-  const response = await fetchWithTimeout(
-    fetchImpl,
-    url,
-    {
-      method: 'POST',
-      headers: {
-        'xi-api-key': apiKey,
-        'content-type': 'application/json',
-        accept: 'audio/mpeg',
-      },
-      body: JSON.stringify({
-        text,
-        model_id: modelId,
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-      }),
-    },
-    timeoutMs,
-  );
+  const url = `${TTS_BASE_URL}/${encodeURIComponent(voiceId)}?output_format=${encodeURIComponent(outputFormat)}`;
 
-  if (!response.ok) {
+  const send = (voiceSettings) =>
+    fetchWithTimeout(
+      fetchImpl,
+      url,
+      {
+        method: 'POST',
+        headers: {
+          'xi-api-key': apiKey,
+          'content-type': 'application/json',
+          accept: 'audio/mpeg',
+        },
+        body: JSON.stringify({ text, model_id: modelId, voice_settings: voiceSettings }),
+      },
+      timeoutMs,
+    );
+
+  let response = await send(settings || voiceSettingsFor(process.env));
+
+  // Not every model accepts style/speed. Fall back to the safe pair rather than
+  // failing the whole turn on a settings mismatch.
+  if (!response.ok && (response.status === 400 || response.status === 422)) {
+    const detail = await readErrorDetail(response);
+    response = await send(SAFE_VOICE_SETTINGS);
+    if (!response.ok) {
+      throw new UpstreamError('ElevenLabs TTS', response.status, detail || (await readErrorDetail(response)));
+    }
+  } else if (!response.ok) {
     throw new UpstreamError('ElevenLabs TTS', response.status, await readErrorDetail(response));
   }
 

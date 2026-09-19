@@ -52,8 +52,27 @@ Parameters:
     Description: ElevenLabs speech-to-text model id.
   TtsModelId:
     Type: String
-    Default: eleven_flash_v2_5
-    Description: ElevenLabs text-to-speech model id (low latency).
+    Default: eleven_turbo_v2_5
+    Description: >-
+      ElevenLabs text-to-speech model. eleven_turbo_v2_5 is fast AND expressive
+      (emotion); eleven_flash_v2_5 is the fastest but flatter; eleven_multilingual_v2
+      is the most expressive but slower.
+  TtsOutputFormat:
+    Type: String
+    Default: mp3_44100_64
+    Description: TTS output format. Lower bitrate = smaller payload = less latency.
+  TtsSpeed:
+    Type: String
+    Default: '0.98'
+    Description: Speech rate, 0.7-1.2. Below 1 is slower. Lower it for a calmer tutor.
+  TtsStability:
+    Type: String
+    Default: '0.3'
+    Description: 0-1. Lower is more expressive and varied (more emotion).
+  TtsStyle:
+    Type: String
+    Default: '0.45'
+    Description: 0-1. Higher exaggerates the voice's style (more emotion).
   AllowedOrigin:
     Type: String
     Default: '*'
@@ -92,6 +111,10 @@ Resources:
           BEDROCK_REGION: !Ref BedrockRegion
           STT_MODEL_ID: !Ref SttModelId
           TTS_MODEL_ID: !Ref TtsModelId
+          TTS_OUTPUT_FORMAT: !Ref TtsOutputFormat
+          TTS_SPEED: !Ref TtsSpeed
+          TTS_STABILITY: !Ref TtsStability
+          TTS_STYLE: !Ref TtsStyle
           SESSION_TTL_MS: '1800000'
           ALLOWED_ORIGIN: !Ref AllowedOrigin
       Policies:
