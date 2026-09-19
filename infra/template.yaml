@@ -24,6 +24,46 @@ Parameters:
     Type: String
     Default: y0IUmXZMBt1M9uXCVcPL
     Description: ElevenLabs voice id used for TTS (no agent required).
+  TtsProvider:
+    Type: String
+    Default: sarvam
+    AllowedValues:
+      - elevenlabs
+      - sarvam
+    Description: TTS provider for the spoken tutor voice.
+  SarvamApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Sarvam API subscription key. Server-side only; used when TtsProvider=sarvam.
+  SarvamTtsModel:
+    Type: String
+    Default: bulbul:v3
+    Description: Sarvam text-to-speech model.
+  SarvamTtsSpeaker:
+    Type: String
+    Default: shubh
+    Description: Sarvam TTS speaker. Use lowercase names, e.g. shubh, rahul, amit.
+  SarvamTtsLanguageCode:
+    Type: String
+    Default: en-IN
+    Description: Sarvam TTS language code.
+  SarvamTtsOutputAudioCodec:
+    Type: String
+    Default: mp3
+    Description: Sarvam TTS output audio codec.
+  SarvamTtsSampleRate:
+    Type: String
+    Default: '24000'
+    Description: Sarvam TTS sample rate.
+  SarvamTtsPace:
+    Type: String
+    Default: '0.98'
+    Description: Sarvam TTS pace, 0.5-2.0.
+  SarvamTtsTemperature:
+    Type: String
+    Default: '0.6'
+    Description: Sarvam TTS temperature, 0.01-2.0.
   GeminiApiKey:
     Type: String
     NoEcho: true
@@ -136,6 +176,15 @@ Resources:
         Variables:
           ELEVENLABS_API_KEY: !Ref ElevenLabsApiKey
           ELEVENLABS_VOICE_ID: !Ref ElevenLabsVoiceId
+          TTS_PROVIDER: !Ref TtsProvider
+          SARVAM_API_KEY: !Ref SarvamApiKey
+          SARVAM_TTS_MODEL: !Ref SarvamTtsModel
+          SARVAM_TTS_SPEAKER: !Ref SarvamTtsSpeaker
+          SARVAM_TTS_LANGUAGE_CODE: !Ref SarvamTtsLanguageCode
+          SARVAM_TTS_OUTPUT_AUDIO_CODEC: !Ref SarvamTtsOutputAudioCodec
+          SARVAM_TTS_SAMPLE_RATE: !Ref SarvamTtsSampleRate
+          SARVAM_TTS_PACE: !Ref SarvamTtsPace
+          SARVAM_TTS_TEMPERATURE: !Ref SarvamTtsTemperature
           LLM_PROVIDER: !Ref LlmProvider
           LLM_FALLBACK_PROVIDER: !Ref LlmFallbackProvider
           GROQ_API_KEY: !Ref GroqApiKey

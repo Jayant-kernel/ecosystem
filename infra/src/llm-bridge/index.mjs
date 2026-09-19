@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { speechToText, textToSpeech } from './elevenlabs.mjs';
+import { speechToText } from './elevenlabs.mjs';
+import { textToSpeech } from './tts.mjs';
 import { createProvider, generateTutorResponse } from './tutor.mjs';
 import { parseRequestBody, header } from './request.mjs';
 import { AppError, BadRequestError, redact } from './errors.mjs';
@@ -164,9 +165,8 @@ export function createHandler(deps = {}) {
     }
 
     const audioOut = await textToSpeech(responseText, {
-      apiKey: env.ELEVENLABS_API_KEY,
-      voiceId: env.ELEVENLABS_VOICE_ID,
-      modelId: env.TTS_MODEL_ID || 'eleven_flash_v2_5',
+      env,
+      provider: env.TTS_PROVIDER,
       fetchImpl,
     });
 
@@ -237,9 +237,8 @@ export function createHandler(deps = {}) {
     appendSessionTurn(sessionId, 'assistant', result.text, ttlMs);
 
     const audioOut = await textToSpeech(result.text, {
-      apiKey: env.ELEVENLABS_API_KEY,
-      voiceId: env.ELEVENLABS_VOICE_ID,
-      modelId: env.TTS_MODEL_ID || 'eleven_flash_v2_5',
+      env,
+      provider: env.TTS_PROVIDER,
       fetchImpl,
     });
 

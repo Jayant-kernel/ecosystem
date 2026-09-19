@@ -146,6 +146,7 @@ jobs:
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
@@ -159,7 +160,16 @@ jobs:
             --no-fail-on-empty-changeset \
             --parameter-overrides \
               ElevenLabsApiKey="${ELEVENLABS_API_KEY:?ELEVENLABS_API_KEY secret is not set}" \
-              ElevenLabsVoiceId="${ELEVENLABS_VOICE_ID:?ELEVENLABS_VOICE_ID secret is not set}" \
+              ElevenLabsVoiceId="${ELEVENLABS_VOICE_ID:-y0IUmXZMBt1M9uXCVcPL}" \
+              TtsProvider=sarvam \
+              SarvamApiKey="${SARVAM_API_KEY:?SARVAM_API_KEY secret is not set}" \
+              SarvamTtsModel=bulbul:v3 \
+              SarvamTtsSpeaker=shubh \
+              SarvamTtsLanguageCode=en-IN \
+              SarvamTtsOutputAudioCodec=mp3 \
+              SarvamTtsSampleRate=24000 \
+              SarvamTtsPace=0.98 \
+              SarvamTtsTemperature=0.6 \
               GeminiApiKey="${GEMINI_API_KEY:?GEMINI_API_KEY secret is not set}" \
               GroqApiKey="${GROQ_API_KEY:?GROQ_API_KEY secret is not set}" \
               LlmProvider=groq \
