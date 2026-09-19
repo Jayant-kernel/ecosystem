@@ -1,10 +1,9 @@
 
-import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Course, Lesson, Transcript, ConsoleOutput, TestResult, TutorToolCall, TutorToolResponse } from '../types';
-import { resolveTeachingTarget, walkLinesForTarget, labelForWalk, createTeachingSteps, createDiagramTeachingSteps, MAX_TEACHING_WALK_LINES } from './teachingTargets';
-import type { TeachingStep, DiagramFocusAction } from './teachingTargets';
+import { resolveTeachingTarget, walkLinesForTarget, labelForWalk, createTeachingSteps, MAX_TEACHING_WALK_LINES } from './teachingTargets';
+import type { TeachingStep } from './teachingTargets';
 import TeachingPanel from './TeachingPanel';
-import { applyDiagramCommands } from './dataflow/dataflowCommands';
 import RoadmapSidebar from './RoadmapSidebar';
 import { useCourseProgress } from '../hooks/useCourseProgress';
 import { useVoiceTutor } from '../hooks/useVoiceTutor';
@@ -14,7 +13,7 @@ import ConversationPanel from './ConversationPanel';
 import CodeWorkspace from './CodeWorkspace';
 import LearningFooter from './LearningFooter';
 import PracticeView from './PracticeView';
-const DataflowCanvas = React.lazy(() => import('./dataflow/DataflowCanvas'));
+import VisualTutorCanvas from './visual-tutor/VisualTutorCanvas';
 import VisualOfferCard from './visual-tutor/VisualOfferCard';
 import { validateVisualPlan, visualSceneSummary } from './visual-tutor/visualSchema';
 import { visualReducer } from './visual-tutor/visualReducer';
@@ -258,26 +257,12 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     // truth for pointer + highlight. Local state only — a session lives and
     // dies with the interaction, never persisted.
     const [teachingSession, setTeachingSession] = useState<{ steps: TeachingStep[]; current: number } | null>(null);
-    /** Bumped whenever the canvas should fit the current diagram step. */
-    const [diagramFocusSignal, setDiagramFocusSignal] = useState(0);
 
     /** Display exactly one step: previous teaching visuals are replaced, never stacked. */
     const showTeachingStep = useCallback((steps: TeachingStep[], index: number) => {
         const step = steps[index];
         if (!step) return;
         clearHighlightTimers();
-        if (step.kind !== 'code') {
-            // Diagram step: clear code visuals, publish the session, and nudge
-            // the canvas to fit the target (handled on mount when late).
-            setHighlightedLines([]);
-            setTutorFocusLine(null);
-            setTutorFocusColumn(null);
-            setTutorFocusLabel(null);
-            setTeachingRanges([]);
-            setTeachingSession({ steps, current: index });
-            setDiagramFocusSignal((nonce) => nonce + 1);
-            return;
-        }
         const lines: number[] = [];
         for (let line = step.startLine; line <= step.endLine && lines.length < MAX_TEACHING_WALK_LINES; line++) {
             lines.push(line);
@@ -546,8 +531,6 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                         setVisualOffer(null);
                         setFollowUpVisualSteps([]);
                         setWorkspaceMode('visual');
-                        const diagramSteps = createDiagramTeachingSteps(fallbackPlan.steps, fallbackPlan.nodes, fallbackPlan.edges);
-                        if (diagramSteps.length) showTeachingStep(diagramSteps, 0);
                     } else setVisualOffer({ topic: topic || 'this concept', reason });
                     responses.push({ id: fc.id, name: fc.name, response: { result: openVisualImmediately ? 'Direct visual request detected; opening live canvas.' : 'Visual explanation offer shown.' } });
                     break;
@@ -567,40 +550,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                         setVisualOffer(null);
                         setFollowUpVisualSteps([]);
                         setWorkspaceMode('visual');
-                        const diagramSteps = createDiagramTeachingSteps(checked.data.steps, checked.data.nodes, checked.data.edges);
-                        if (diagramSteps.length) showTeachingStep(diagramSteps, 0);
                     }
                     responses.push({ id: fc.id, name: fc.name, response: { result: 'Validated visual plan is ready.' } });
-                    break;
-                }
-                case 'modifyVisualDiagram': {
-                    if (!visualPlan) { responses.push({ id: fc.id, name: fc.name, response: { error: 'No visual scene is open.' } }); break; }
-                    const actions = Array.isArray(fc.args?.actions) ? (fc.args.actions as unknown[]).slice(0, 8) : [];
-                    if (!actions.length) { responses.push({ id: fc.id, name: fc.name, response: { error: 'No diagram actions provided.' } }); break; }
-                    const { plan: next, results } = applyDiagramCommands(visualPlan, actions);
-                    const failed = results.filter((result) => !result.ok);
-                    setVisualPlan(next);
-                    setWorkspaceMode('visual');
-                    // Focus/explain intents join (or start) the teaching session
-                    // so Next/Back walk the updated graph; mutations alone do not.
-                    const taught = createDiagramTeachingSteps(actions as DiagramFocusAction[], next.nodes, next.edges);
-                    if (taught.length) {
-                        clearHighlight();
-                        setTeachingSession((prev) => {
-                            const base = prev && prev.steps.length && prev.steps[0].kind !== 'code' ? prev : null;
-                            return base
-                                ? { steps: [...base.steps, ...taught], current: base.current }
-                                : { steps: taught, current: 0 };
-                        });
-                        setDiagramFocusSignal((nonce) => nonce + 1);
-                    }
-                    responses.push({
-                        id: fc.id,
-                        name: fc.name,
-                        response: failed.length
-                            ? { result: `Diagram updated with ${results.length - failed.length} change(s); ${failed.length} rejected: ${failed.map((result) => result.error).join(' ')}` }
-                            : { result: `Diagram updated (${results.length} change(s)).` },
-                    });
                     break;
                 }
                 case 'updateVisualExplanation': {
@@ -752,40 +703,13 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     // Concept lessons have no editor and no console.
     const isTheory = currentLesson?.mode === 'theory';
     const showVisual = Boolean(visualPlan && workspaceMode === 'visual');
-    // Diagram cursor for the teaching session: only the current step's
-    // diagram target drives the canvas (code steps keep the Monaco path).
-    const diagramCursor = (() => {
-        const step = teachingSession?.steps[teachingSession.current];
-        if (!step || step.kind === 'code' || !step.diagramId) return null;
-        return { kind: step.kind, id: step.diagramId, label: step.label };
-    })();
     const acceptVisualOffer = () => {
         if (!pendingVisualPlan) return;
         setVisualPlan(pendingVisualPlan);
         setVisualOffer(null);
         setFollowUpVisualSteps([]);
         setWorkspaceMode('visual');
-        const diagramSteps = createDiagramTeachingSteps(pendingVisualPlan.steps, pendingVisualPlan.nodes, pendingVisualPlan.edges);
-        if (diagramSteps.length) showTeachingStep(diagramSteps, 0);
     };
-
-    /** Writes user-dragged node positions back into the canonical plan. */
-    const handleDiagramPositions = useCallback((positions: Record<string, { x: number; y: number }>) => {
-        setVisualPlan((prev) => {
-            if (!prev) return prev;
-            let changed = false;
-            const nodes = prev.nodes.map((node) => {
-                const next = positions[node.id];
-                if (!next || !Number.isFinite(next.x) || !Number.isFinite(next.y)) return node;
-                const x = Math.max(-10000, Math.min(10000, next.x));
-                const y = Math.max(-10000, Math.min(10000, next.y));
-                if (node.position && Math.abs(node.position.x - x) < 0.5 && Math.abs(node.position.y - y) < 0.5) return node;
-                changed = true;
-                return { ...node, position: { x, y } };
-            });
-            return changed ? { ...prev, nodes } : prev;
-        });
-    }, []);
 
     if (practiceModule?.practice) {
         return (
@@ -860,9 +784,9 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                                 {visualPlan && <div className="visual-workspace-switch" role="tablist"><button role="tab" aria-selected={workspaceMode === 'code'} onClick={() => setWorkspaceMode('code')}>Code</button><button role="tab" aria-selected={workspaceMode === 'visual'} onClick={() => setWorkspaceMode('visual')}>Visual</button></div>}
                                 <div className={`absolute inset-0 transition-all duration-500 ${showVisual ? 'opacity-0 pointer-events-none translate-y-2' : 'opacity-100'}`}><CodeWorkspace code={editorCode} onCodeChange={handleCodeChange} output={consoleOutput} exercises={exercises} onRunTests={handleRunTests} onRunCode={handleRunCode} onResetCode={handleResetCode} highlightLines={highlightedLines} highlightRanges={teachingRanges} onMountEditor={handleMountEditor} consoleTabSignal={consoleTabSignal} tutorFocusLine={tutorFocusLine} tutorFocusColumn={tutorFocusColumn} tutorFocusLabel={tutorFocusLabel ?? (tutorFocusLine ? `Explaining line ${tutorFocusLine}` : undefined)} /></div>
                             </>}
-                            {showVisual && visualPlan && <div className="absolute inset-0 animate-fade-in"><Suspense fallback={<div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.25em] text-zinc-600">Preparing diagram</div>}><DataflowCanvas plan={visualPlan} activeId={diagramCursor?.id ?? null} cursor={diagramCursor} focusSignal={diagramFocusSignal} onPositionsChange={handleDiagramPositions} onClose={() => setWorkspaceMode('code')} /></Suspense></div>}
+                            {showVisual && visualPlan && <div className="absolute inset-0 animate-fade-in"><VisualTutorCanvas plan={visualPlan} followUpSteps={followUpVisualSteps} onClose={() => setWorkspaceMode('code')} onSceneChange={setVisualScene} /></div>}
                             {visualOffer && <div className="absolute inset-x-3 bottom-3 z-30"><VisualOfferCard topic={visualOffer.topic} reason={visualOffer.reason} onAccept={acceptVisualOffer} onDismiss={() => setVisualOffer(null)} /></div>}
-                            {teachingSession && (
+                            {teachingSession && !showVisual && (
                                 <div className="absolute bottom-3 right-3 z-30">
                                     <TeachingPanel
                                         step={teachingSession.current}

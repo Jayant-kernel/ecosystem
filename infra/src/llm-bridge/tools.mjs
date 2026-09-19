@@ -112,13 +112,10 @@ const visualPlanProperties = {
   steps: { type: 'array', maxItems: 64, items: { type: 'object', properties: { type: { type: 'string', enum: VISUAL_ACTION_ENUM }, target: { type: 'string' }, text: { type: 'string', maxLength: 140 }, durationMs: { type: 'integer', minimum: 0, maximum: 6000 } }, required: ['type'] } },
 };
 
-const DIAGRAM_COMMAND_ENUM = ['create_node', 'delete_node', 'update_node', 'connect_nodes', 'delete_edge', 'update_edge', 'focus_node', 'focus_edge', 'explain_node', 'explain_edge'];
-
 export const VISUAL_TOOLS = [
   { name: 'offerVisualExplanation', description: 'Offer a live visual explanation only when a spatial or sequential concept would materially help. Never force it on the learner.', parameters: { type: 'object', properties: { topic: { type: 'string', maxLength: 100 }, reason: { type: 'string', maxLength: 160 } }, required: ['topic'] } },
   { name: 'presentVisualExplanation', description: 'Provide one compact, safe visual plan. Use after a learner asks to see a concept, or pair it with offerVisualExplanation so the UI can hold it until the learner accepts.', parameters: { type: 'object', properties: visualPlanProperties, required: ['title', 'nodes', 'edges', 'steps'] } },
   { name: 'updateVisualExplanation', description: 'Manipulate the existing visual scene using its semantic ids. Use for follow-up questions; do not rebuild the diagram.', parameters: { type: 'object', properties: { actions: { type: 'array', maxItems: 12, items: { type: 'object', properties: { type: { type: 'string', enum: VISUAL_ACTION_ENUM }, target: { type: 'string' }, text: { type: 'string', maxLength: 140 }, durationMs: { type: 'integer', minimum: 0, maximum: 6000 } }, required: ['type'] } } }, required: ['actions'] } },
-  { name: 'modifyVisualDiagram', description: 'Change the open dataflow diagram with small semantic commands: create/delete/update nodes and edges, or focus/explain a node or edge for teaching. Always use existing stable IDs; never invent coordinates.', parameters: { type: 'object', properties: { actions: { type: 'array', maxItems: 8, items: { type: 'object', properties: { type: { type: 'string', enum: DIAGRAM_COMMAND_ENUM }, nodeId: { type: 'string' }, edgeId: { type: 'string' }, source: { type: 'string' }, target: { type: 'string' }, label: { type: 'string', maxLength: 60 }, nodeType: { type: 'string', enum: VISUAL_NODE_ENUM }, detail: { type: 'string', maxLength: 120 }, text: { type: 'string', maxLength: 140 } }, required: ['type'] } } }, required: ['actions'] } },
 ];
 
 TOOLS.push(...VISUAL_TOOLS);
@@ -301,11 +298,7 @@ LIVE VISUAL TEACHING:
 - When offering, say one short natural sentence and call offerVisualExplanation. In the same tool batch, also call presentVisualExplanation with one small diagram plan; the UI keeps that plan hidden until the learner chooses it.
 - When the learner explicitly says "make a flowchart", "show me visually", "draw a diagram", or otherwise directly asks for a visual, do NOT call offerVisualExplanation. Call presentVisualExplanation in that same reply and begin the live canvas immediately. The editor and console will transition away for the visual lesson.
 - A plan is declarative data only: 2-8 semantic nodes, named edges, and a short sequence of revealNode, revealEdge, focus, pulse, annotate, dimOthers, clearFocus, wait, finish. Never emit UI code, HTML, CSS, coordinates, screenshots, OCR, or computer-control instructions.
-- Include a focus step (with a short note naming the thing) for every node you intend to explain, ordered along the flow. Focus steps become the learner's step-by-step teaching; a plan with only reveal steps draws the diagram but teaches nothing.
 - If CURRENT VISUAL SCENE is present and the learner asks a follow-up, call updateVisualExplanation with semantic ids from that summary. Do not rebuild the whole diagram.
-- To change the open diagram (add/remove/rename nodes or edges), call modifyVisualDiagram with small semantic commands: create_node, delete_node, update_node, connect_nodes, delete_edge, update_edge. Always reuse the existing stable IDs from CURRENT VISUAL SCENE; never recreate the graph to make a small change. Deleting a node safely removes its edges.
-- To teach the diagram step by step, call modifyVisualDiagram with focus_node, focus_edge, explain_node, or explain_edge using the node's or edge's stable ID plus a short note. The UI moves its teaching cursor to the actual rendered element. Prefer 1–4 focus steps per turn, ordered along the flow.
-- Never emit coordinates, pixel positions, DOM selectors, or renderer state for diagrams. Semantic IDs are the only addressing mechanism.
 - The canvas pointer is virtual and internal to the lesson. It never controls the learner's operating-system cursor.
 
 TEACHING TOOLS:

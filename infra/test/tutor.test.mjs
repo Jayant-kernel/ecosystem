@@ -241,7 +241,7 @@ test('selectTools removes the code tools on concept lessons', () => {
   assert.equal(selectTools(undefined), TOOLS);
 
   const theoryNames = selectTools('theory').map((tool) => tool.name);
-  assert.deepEqual(theoryNames, ['controlApp', 'offerVisualExplanation', 'presentVisualExplanation', 'updateVisualExplanation', 'modifyVisualDiagram']);
+  assert.deepEqual(theoryNames, ['controlApp', 'offerVisualExplanation', 'presentVisualExplanation', 'updateVisualExplanation']);
   assert.ok(!theoryNames.includes('writeCode'));
 
   const fullNames = selectTools('hands-on').map((tool) => tool.name);
@@ -260,7 +260,7 @@ test('generateTutorResponse passes the mode-appropriate tools to the provider', 
   };
 
   await generateTutorResponse({ provider, transcript: 'hi', context: { lessonMode: 'theory' } });
-  assert.deepEqual(provider.calls[0].tools.map((tool) => tool.name), ['controlApp', 'offerVisualExplanation', 'presentVisualExplanation', 'updateVisualExplanation', 'modifyVisualDiagram']);
+  assert.deepEqual(provider.calls[0].tools.map((tool) => tool.name), ['controlApp', 'offerVisualExplanation', 'presentVisualExplanation', 'updateVisualExplanation']);
 
   await generateTutorResponse({ provider, transcript: 'hi', context: { lessonMode: 'hands-on' } });
   assert.ok(provider.calls[1].tools.map((tool) => tool.name).includes('writeCode'));
@@ -278,22 +278,6 @@ test('invalid visual calls are removed before they reach the client', () => {
   const valid = { title: 'Flow', nodes: [{ id: 'browser', label: 'Browser', type: 'client' }], edges: [], steps: [{ type: 'revealNode', target: 'browser' }] };
   const calls = sanitizeVisualToolCalls([{ name: 'presentVisualExplanation', args: valid }, { name: 'presentVisualExplanation', args: { ...valid, nodes: [{ id: 'BAD id', label: 'x', type: 'client' }] } }, { name: 'writeCode', args: { code: 'x' } }]);
   assert.deepEqual(calls.map((call) => call.name), ['presentVisualExplanation', 'writeCode']);
-});
-
-test('modifyVisualDiagram shape is sanitized; semantics validate client-side', () => {
-  const good = [{ name: 'modifyVisualDiagram', args: { actions: [{ type: 'focus_node', nodeId: 'api', note: 'Routes requests' }] } }];
-  const badShape = [{ name: 'modifyVisualDiagram', args: { actions: [{ type: 'teleport' }] } }];
-  const tooMany = [{ name: 'modifyVisualDiagram', args: { actions: Array.from({ length: 9 }, () => ({ type: 'focus_node', nodeId: 'api' })) } }];
-  assert.deepEqual(sanitizeVisualToolCalls(good).map((call) => call.name), ['modifyVisualDiagram']);
-  assert.deepEqual(sanitizeVisualToolCalls(badShape), []);
-  assert.deepEqual(sanitizeVisualToolCalls(tooMany), []);
-});
-
-test('diagram prompt teaches semantic commands, never coordinates', () => {
-  const prompt = buildSystemPrompt({ lessonTitle: 'APIs', moduleTitle: 'Basics' });
-  assert.match(prompt, /modifyVisualDiagram/);
-  assert.match(prompt, /stable IDs/);
-  assert.match(prompt, /Semantic IDs are the only addressing mechanism/);
 });
 
 test('buildIntro offers options instead of waiting to be asked', () => {
