@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import OrbScene from './OrbScene';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import OrbCanvas from './OrbCanvas';
 import { ORB_TUNING as T } from './tuning';
 import { ORB_STATE_LABEL } from './types';
 import type { OrbState, TutorOrbProps } from './types';
+import { audioLevels } from '../../utils/audioLevels';
 
 /** Subscribe to a media query without pulling in a dependency. */
 function useMediaFlag(query: string): boolean {
@@ -30,7 +30,7 @@ function hasWebGL(): boolean {
 
 /** CSS-only orb: the non-WebGL and reduced-motion experience. */
 function OrbFallback({ state, size }: { state: OrbState; size: number }): JSX.Element {
-  const glow = T.glow[state];
+  const halo = T.halo[state];
   const animated = state === 'listening' || state === 'speaking' || state === 'thinking';
   return (
     <div
@@ -38,53 +38,42 @@ function OrbFallback({ state, size }: { state: OrbState; size: number }): JSX.El
       style={{
         width: size,
         height: size,
-        background:
-          `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.96), ${glow.emissive}66 44%, rgba(9,11,20,0.92) 76%)`,
-        boxShadow: `0 0 70px ${glow.halo}, inset 0 0 46px rgba(255,255,255,0.22)`,
-        transition: 'background 600ms ease, box-shadow 600ms ease',
+        background: `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.9), ${halo} 46%, rgba(9,11,20,0.92) 76%)`,
+        boxShadow: `0 0 70px ${halo}, inset 0 0 46px rgba(255,255,255,0.22)`,
       }}
     />
   );
 }
 
-class OrbErrorBoundary extends React.Component<
-  { fallback: React.ReactNode; onFail: () => void; children: React.ReactNode },
-  { failed: boolean }
-> {
-  constructor(props: { fallback: React.ReactNode; onFail: () => void; children: React.ReactNode }) {
-    super(props);
-    this.state = { failed: false };
-  }
-
-  static getDerivedStateFromError(): { failed: boolean } {
-    return { failed: true };
-  }
-
-  componentDidCatch(error: unknown): void {
-    // eslint-disable-next-line no-console
-    console.error('[tutor-orb] WebGL scene failed, falling back to the CSS orb.', error);
-    this.props.onFail();
-  }
-
-  render(): React.ReactNode {
-    if (this.state.failed) return this.props.fallback;
-    return this.props.children;
-  }
-}
-
 /**
- * The AI tutor's face: a procedural liquid-glass orb that reacts to the live
- * microphone and to the tutor's own voice. It owns no session logic — it is a
- * pure visual for whatever `ConversationPanel` is already doing.
+ * The AI tutor's face: a liquid-glass orb drawn by a single fragment shader.
+ *
+ * It owns no session logic. `ConversationPanel` derives the state from the
+ * existing flags, and clicking the orb simply toggles the session through the
+ * same handler the old microphone button used.
  */
-const TutorOrb: React.FC<TutorOrbProps> = ({ state, onToggle, size = 200, label, className }) => {
+const TutorOrb: React.FC<TutorOrbProps> = ({ state, onToggle, size = T.size, label, className }) => {
   const reducedMotion = useMediaFlag('(prefers-reduced-motion: reduce)');
   const [supported] = useState(hasWebGL);
   const [onScreen, setOnScreen] = useState(true);
   const [failed, setFailed] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  // Stop all rendering work while the orb is scrolled out of view.
+  // Read the current state inside the frame loop without re-running the effect.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const getLevel = useCallback(() => {
+    const current = stateRef.current;
+    if (current === 'listening') return audioLevels.mic;
+    if (current === 'speaking') return audioLevels.speaker;
+    return 0;
+  }, []);
+
+  // Stable identity: OrbCanvas re-creates its WebGL context if this changes.
+  const handleCanvasError = useCallback(() => setFailed(true), []);
+
+  // Stop all GPU work while the orb is scrolled out of view.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
@@ -96,7 +85,7 @@ const TutorOrb: React.FC<TutorOrbProps> = ({ state, onToggle, size = 200, label,
     return () => io.disconnect();
   }, []);
 
-  const glow = T.glow[state];
+  const preset = T.states[state];
   const accessibleLabel = label ?? ORB_STATE_LABEL[state];
   const showFallback = reducedMotion || !supported || failed;
   const fallback = <OrbFallback state={state} size={size} />;
@@ -107,13 +96,13 @@ const TutorOrb: React.FC<TutorOrbProps> = ({ state, onToggle, size = 200, label,
       className={`relative flex items-center justify-center ${className ?? ''}`}
       style={{ width: size, height: size }}
     >
-      {/* Halo: a cheap CSS glow instead of a post-processing pass. */}
+      {/* Halo: a cheap CSS glow rather than a shader bloom pass. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute rounded-full"
         style={{
           inset: '-18%',
-          background: `radial-gradient(circle, ${glow.halo} 0%, transparent 68%)`,
+          background: `radial-gradient(circle, ${T.halo[state]} 0%, transparent 68%)`,
           filter: 'blur(14px)',
           transition: 'background 700ms ease',
         }}
@@ -130,18 +119,17 @@ const TutorOrb: React.FC<TutorOrbProps> = ({ state, onToggle, size = 200, label,
         {showFallback ? (
           fallback
         ) : (
-          <OrbErrorBoundary fallback={fallback} onFail={() => setFailed(true)}>
-            <Canvas
-              frameloop={onScreen ? 'always' : 'never'}
-              dpr={[1, T.maxDpr]}
-              gl={{ antialias: true, alpha: true, powerPreference: 'high-performance', stencil: false }}
-              camera={{ fov: 30, position: [0, 0, 3.4], near: 0.1, far: 20 }}
-              // Clicks belong to the button; the canvas never needs the pointer.
-              style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
-            >
-              <OrbScene state={state} onError={() => setFailed(true)} />
-            </Canvas>
-          </OrbErrorBoundary>
+          <OrbCanvas
+            hue={preset.hue}
+            hoverIntensity={preset.hoverIntensity}
+            rotateSpeed={preset.rotateSpeed}
+            errorMix={preset.errorMix}
+            forceHoverState={state === 'listening' || state === 'speaking'}
+            backgroundColor={T.backgroundColor}
+            getLevel={getLevel}
+            paused={!onScreen}
+            onError={handleCanvasError}
+          />
         )}
       </button>
     </div>
