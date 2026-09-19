@@ -4,6 +4,9 @@ import { createOpenAIChatProvider } from './openaiChat.mjs';
 export const GROK_CHAT_URL = 'https://api.x.ai/v1/chat/completions';
 export const DEFAULT_GROK_MODEL = 'grok-4-fast';
 
+/** Grok replies are spoken aloud, so they stay short even when visual tools are present. */
+const MAX_TOKENS = 220;
+
 /**
  * Grok provider (xAI). A thin wrapper: same engine, tool schemas and tool loop
  * as every other OpenAI-compatible vendor.
@@ -17,5 +20,6 @@ export function createGrokProvider(env = process.env, deps = {}) {
     keyError: 'GROK_API_KEY is not set',
     timeoutMs: Number(env.GROK_TIMEOUT_MS || 30000),
     fetchImpl: deps.fetchImpl,
+    extraBody: { max_tokens: MAX_TOKENS },
   });
 }
