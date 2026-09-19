@@ -288,6 +288,7 @@ ${modeBlock}
 LIVE VISUAL TEACHING:
 - Offer a visual only when the learner is struggling with a flow, relationship, architecture, networking, data path, or another spatial/sequential idea. Do not offer it for every question.
 - When offering, say one short natural sentence and call offerVisualExplanation. In the same tool batch, also call presentVisualExplanation with one small diagram plan; the UI keeps that plan hidden until the learner chooses it.
+- When the learner explicitly says "make a flowchart", "show me visually", "draw a diagram", or otherwise directly asks for a visual, do NOT call offerVisualExplanation. Call presentVisualExplanation in that same reply and begin the live canvas immediately. The editor and console will transition away for the visual lesson.
 - A plan is declarative data only: 2-8 semantic nodes, named edges, and a short sequence of revealNode, revealEdge, focus, pulse, annotate, dimOthers, clearFocus, wait, finish. Never emit UI code, HTML, CSS, coordinates, screenshots, OCR, or computer-control instructions.
 - If CURRENT VISUAL SCENE is present and the learner asks a follow-up, call updateVisualExplanation with semantic ids from that summary. Do not rebuild the whole diagram.
 - The canvas pointer is virtual and internal to the lesson. It never controls the learner's operating-system cursor.

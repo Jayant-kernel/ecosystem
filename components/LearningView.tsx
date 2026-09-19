@@ -15,7 +15,7 @@ import VisualOfferCard from './visual-tutor/VisualOfferCard';
 import { validateVisualPlan, visualSceneSummary } from './visual-tutor/visualSchema';
 import { visualReducer } from './visual-tutor/visualReducer';
 import { EMPTY_VISUAL_SCENE } from './visual-tutor/visualTypes';
-import type { VisualPlan, VisualSceneState, VisualStep } from './visual-tutor/visualTypes';
+import type { VisualNode, VisualPlan, VisualSceneState, VisualStep } from './visual-tutor/visualTypes';
 import { executeCodeSafely, executeTests } from '../utils/codeExecutor';
 import { voiceService } from '../services/voiceService';
 import { View } from '../App';
@@ -24,6 +24,34 @@ interface LearningViewProps {
     course: Course;
     navigateTo: (view: View) => void;
 }
+
+/** A direct request opens Visual Mode; tentative tutor suggestions still ask first. */
+const isDirectVisualRequest = (value: string) => /\b(?:show|make|draw|build|create|explain)\b[^.]{0,56}\b(?:visual(?:ly|isation|ization)?|flow\s*chart|flowchart|diagram|architecture|data\s*flow)\b|\b(?:flow\s*chart|flowchart|diagram|visual(?:ly|isation|ization)?)\b|फ्लो\s*चार्ट|फ्लोचार्ट|डायग्राम|विजुअल|चित्र/.test(value.toLowerCase());
+const FALLBACK_NODE_TYPES: VisualNode['type'][] = ['client', 'gateway', 'compute', 'database', 'storage', 'service'];
+
+/** Guarantees a live teaching canvas even if a model offers visual mode without a plan. */
+const buildDirectVisualPlan = (lesson: Lesson | null, topic: string): VisualPlan => {
+    const flow = lesson?.content.flows?.find((candidate) => candidate.steps.length >= 2);
+    const sourceSteps = flow?.steps?.slice(0, 6) || [
+        { label: 'Starting point', detail: topic },
+        { label: 'Process', detail: 'The important transformation happens here.' },
+        { label: 'Result', detail: 'The learner can now see the outcome.' },
+    ];
+    const nodes: VisualNode[] = sourceSteps.map((step, index) => ({
+        id: `step-${index + 1}`,
+        label: step.label.slice(0, 60),
+        detail: (step.detail || (index === 0 ? topic : 'Next step in the flow.')).slice(0, 120),
+        type: FALLBACK_NODE_TYPES[index % FALLBACK_NODE_TYPES.length],
+    }));
+    const edges = nodes.slice(1).map((node, index) => ({ id: `flow-${index + 1}`, from: nodes[index].id, to: node.id, label: 'then' }));
+    const steps: VisualStep[] = [];
+    nodes.forEach((node, index) => {
+        steps.push({ type: 'revealNode', target: node.id }, { type: 'focus', target: node.id }, { type: 'pulse', target: node.id }, { type: 'wait', durationMs: 1500 });
+        if (index > 0) steps.push({ type: 'revealEdge', target: edges[index - 1].id });
+    });
+    steps.push({ type: 'clearFocus' }, { type: 'finish' });
+    return { title: flow?.title || topic, nodes, edges, steps };
+};
 
 const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     const { progress, updateProgress, completeLesson } = useCourseProgress(course.id);
@@ -46,6 +74,7 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
     const [editorCode, setEditorCode] = useState('// Your AI tutor will write code here...');
     const [consoleOutput, setConsoleOutput] = useState<ConsoleOutput[]>([]);
     const [transcript, setTranscript] = useState<Transcript>({ user: '', ai: '', isFinal: false });
+    const latestLearnerRequestRef = useRef('');
 
     // Refs to access latest state in async tool callbacks
     const editorCodeRef = useRef(editorCode);
@@ -284,6 +313,9 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         // final code (e.g. executeCode); otherwise keep audio latency low.
         const writeCall = functionCalls.find((fc) => fc.name === 'writeCode');
         const offerCall = functionCalls.find((fc) => fc.name === 'offerVisualExplanation');
+        // Tool calls arrive just after the transcript, so this uses the learner's
+        // actual words rather than trusting the model to label its own intent.
+        const openVisualImmediately = isDirectVisualRequest(latestLearnerRequestRef.current);
         const needsSettledCode = functionCalls.some((fc) =>
             fc.name === 'executeCode' ||
             (fc.name === 'controlApp' && (fc.args?.action as string) === 'run_code')
@@ -352,8 +384,15 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                 case 'offerVisualExplanation': {
                     const topic = typeof fc.args?.topic === 'string' ? fc.args.topic.trim().slice(0, 100) : 'this concept';
                     const reason = typeof fc.args?.reason === 'string' ? fc.args.reason.trim().slice(0, 160) : undefined;
-                    setVisualOffer({ topic: topic || 'this concept', reason });
-                    responses.push({ id: fc.id, name: fc.name, response: { result: 'Visual explanation offer shown.' } });
+                    if (openVisualImmediately) {
+                        const fallbackPlan = buildDirectVisualPlan(currentLesson, topic || 'this concept');
+                        setPendingVisualPlan(fallbackPlan);
+                        setVisualPlan(fallbackPlan);
+                        setVisualOffer(null);
+                        setFollowUpVisualSteps([]);
+                        setWorkspaceMode('visual');
+                    } else setVisualOffer({ topic: topic || 'this concept', reason });
+                    responses.push({ id: fc.id, name: fc.name, response: { result: openVisualImmediately ? 'Direct visual request detected; opening live canvas.' : 'Visual explanation offer shown.' } });
                     break;
                 }
                 case 'presentVisualExplanation': {
@@ -363,9 +402,15 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                         break;
                     }
                     setPendingVisualPlan(checked.data);
-                    // A direct learner request can open immediately. When this batch also
-                    // offers a visual, the plan waits behind the learner's explicit choice.
-                    if (!offerCall) { setVisualPlan(checked.data); setWorkspaceMode('visual'); }
+                    // Direct requests never wait behind the offer card. That lets phrases
+                    // like "make a flow chart" transition the editor straight into the
+                    // live canvas while tentative suggestions still preserve learner choice.
+                    if (!offerCall || openVisualImmediately) {
+                        setVisualPlan(checked.data);
+                        setVisualOffer(null);
+                        setFollowUpVisualSteps([]);
+                        setWorkspaceMode('visual');
+                    }
                     responses.push({ id: fc.id, name: fc.name, response: { result: 'Validated visual plan is ready.' } });
                     break;
                 }
@@ -381,9 +426,10 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
             }
         }
         return responses;
-    }, [applyHighlight, applyHighlightLines, clearHighlight, clearHighlightTimers, handleRunCode, handleResetCode, handleCompleteLesson, visualPlan, visualScene.activeStep]);
+    }, [applyHighlight, applyHighlightLines, clearHighlight, clearHighlightTimers, currentLesson, handleRunCode, handleResetCode, handleCompleteLesson, visualPlan, visualScene.activeStep]);
 
     const onStreamMessage = useCallback((newTranscript: Transcript) => {
+        latestLearnerRequestRef.current = newTranscript.user || '';
         setTranscript(newTranscript);
     }, []);
 
