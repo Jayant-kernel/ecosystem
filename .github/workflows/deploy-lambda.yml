@@ -54,8 +54,33 @@ jobs:
         # External APIs (ElevenLabs/Bedrock/Gemini) are mocked — no real calls, no secrets needed.
         run: npm test
 
-      - name: Set up SAM CLI
-        uses: aws-actions/setup-sam@v2
+      - name: Diagnose OIDC token (TEMPORARY)
+        # TEMPORARY debugging for "web identity token could not be validated".
+        # Requests the GitHub OIDC JWT and prints ONLY these payload claims:
+        # iss, aud, sub, repository, repository_id, repository_owner,
+        # repository_owner_id, ref, event_name — plus GITHUB_REPOSITORY,
+        # GITHUB_REF and GITHUB_EVENT_NAME.
+        # The raw JWT, request token, Authorization header and signature are
+        # never printed, uploaded or stored. Remove this step after debugging.
+        run: |
+          set -euo pipefail
+          echo "GITHUB_REPOSITORY=${GITHUB_REPOSITORY}"
+          echo "GITHUB_REF=${GITHUB_REF}"
+          echo "GITHUB_EVENT_NAME=${GITHUB_EVENT_NAME}"
+          resp=$(curl -sS -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
+          OIDC_JWT="$(printf '%s' "$resp" | python3 -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+          OIDC_JWT="${OIDC_JWT}" python3 - <<'EOF'
+          import base64
+          import json
+          import os
+          payload = os.environ['OIDC_JWT'].split('.')[1]
+          payload += '=' * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+          for key in ('iss', 'aud', 'sub', 'repository', 'repository_id',
+                      'repository_owner', 'repository_owner_id', 'ref', 'event_name'):
+              print(f'{key}={claims.get(key)}')
+          EOF
 
       - name: Authenticate to AWS with OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -63,6 +88,9 @@ jobs:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           role-session-name: gha-deploy-lambda-${{ github.sha }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up SAM CLI
+        uses: aws-actions/setup-sam@v2
 
       - name: Build with SAM
         run: sam build --template ${{ env.SAM_TEMPLATE }}
