@@ -186,17 +186,17 @@ export default function Overlay({ navigateTo, canvasWrapRef }: OverlayProps): JS
             ref={eyebrowRef}
             className="mb-5 text-[11px] font-semibold uppercase tracking-[0.28em] text-orange-500/90"
           >
-            Ecosystem · AI coding tutor
+            Ecosystem · AI Coding Tutor
           </p>
           <h1
             ref={headlineRef}
             className="mb-5 font-manrope text-4xl font-medium leading-[1.05] tracking-[-0.02em] text-white md:text-6xl"
           >
-            Master code with your voice.
+            Talk. Code. Understand.
           </h1>
           <p ref={subRef} className="mx-auto mb-8 max-w-lg text-base leading-relaxed text-zinc-400/90 md:text-lg">
-            The conversational coding companion. From explaining complex concepts to
-            real-time debugging, learn faster by talking to your code.
+            An AI-powered coding companion that helps you learn concepts,
+            debug errors, and build with confidence all through your voice.
           </p>
           <div ref={ctaRef} className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <button
