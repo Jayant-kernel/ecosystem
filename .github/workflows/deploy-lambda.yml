@@ -138,6 +138,16 @@ jobs:
         # Idempotent CloudFormation update: preserves the Lambda function names,
         # API Gateway, IAM roles, memory/timeout, runtime and architecture defined
         # in infra/template.yaml. Secrets come from GitHub Secrets, never the repo.
+        #
+        # Required secrets are passed through env and guarded with ${VAR:?...}.
+        # A secret that does not exist expands to an empty string, which SAM
+        # rejects with a confusing "ParameterKey= is not a valid format"; this
+        # fails with a readable message instead.
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
@@ -148,16 +158,14 @@ jobs:
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
             --parameter-overrides \
-              ElevenLabsApiKey="${{ secrets.ELEVENLABS_API_KEY }}" \
-              ElevenLabsVoiceId="${{ secrets.ELEVENLABS_VOICE_ID }}" \
-              GeminiApiKey="${{ secrets.GEMINI_API_KEY }}" \
-              GroqApiKey="${{ secrets.GROQ_API_KEY }}" \
+              ElevenLabsApiKey="${ELEVENLABS_API_KEY:?ELEVENLABS_API_KEY secret is not set}" \
+              ElevenLabsVoiceId="${ELEVENLABS_VOICE_ID:?ELEVENLABS_VOICE_ID secret is not set}" \
+              GeminiApiKey="${GEMINI_API_KEY:?GEMINI_API_KEY secret is not set}" \
+              GroqApiKey="${GROQ_API_KEY:?GROQ_API_KEY secret is not set}" \
               LlmProvider=groq \
               LlmFallbackProvider=gemini \
               GroqModelId=openai/gpt-oss-20b \
               GroqReasoningEffort=low \
-              GrokApiKey="${{ secrets.GROK_API_KEY }}" \
-              GrokModelId=grok-4-fast \
               TtsModelId=eleven_turbo_v2_5 \
               TtsOutputFormat=mp3_44100_64 \
               TtsSpeed=0.98 \
