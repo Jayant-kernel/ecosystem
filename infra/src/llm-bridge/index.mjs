@@ -100,9 +100,13 @@ export function createHandler(deps = {}) {
     const origin = env.ALLOWED_ORIGIN || '*';
     const ttlMs = Number(env.SESSION_TTL_MS || DEFAULT_SESSION_TTL_MS);
 
-    const { audio, mimeType, fields } = await parseRequestBody(event, {
+    const { audio, mimeType, fields, meta } = await parseRequestBody(event, {
       maxBytes: Number(env.MAX_AUDIO_BYTES) || undefined,
     });
+
+    // TEMPORARY diagnostics: safe, metadata-only (see request.mjs). Set
+    // DEBUG_VOICE_UPLOAD=1 on the Lambda to log every request, not just failures.
+    if (env.DEBUG_VOICE_UPLOAD === '1') logger.log?.('[voice-upload]', meta);
 
     const sessionId = (typeof fields.sessionId === 'string' && fields.sessionId) || uuid();
 
@@ -130,6 +134,7 @@ export function createHandler(deps = {}) {
       responseText = buildIntro(context);
     } else {
       if (!audio || !audio.length) {
+        logger.error?.('[voice-upload] no usable audio', meta);
         throw new BadRequestError('Missing audio file (expected multipart field "audio")');
       }
 

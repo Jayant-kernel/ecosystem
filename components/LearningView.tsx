@@ -356,6 +356,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
         isSpeaking,
         isListening,
         isMuted,
+        handsFree,
+        toggleHandsFree,
         startSession,
         stopSession,
         toggleMute,
@@ -505,6 +507,8 @@ const LearningView: React.FC<LearningViewProps> = ({ course, navigateTo }) => {
                                 isListening={isListening}
                                 isSpeaking={isSpeaking}
                                 isMuted={isMuted}
+                                handsFree={handsFree}
+                                toggleHandsFree={toggleHandsFree}
                                 startSession={startSession}
                                 stopSession={stopSession}
                                 toggleMute={toggleMute}

@@ -20,7 +20,7 @@ export function toBuffer(event) {
     : Buffer.from(raw, 'utf8');
 }
 
-function parseMultipart(buffer, contentType) {
+function parseMultipart(buffer, contentType, meta) {
   return new Promise((resolve, reject) => {
     let parser;
     try {
@@ -35,6 +35,11 @@ function parseMultipart(buffer, contentType) {
     const fields = {};
 
     parser.on('file', (name, stream, info) => {
+      // TEMPORARY diagnostics: field name, MIME type and byte counts only.
+      // Never the file contents.
+      if (meta?.files) {
+        meta.files.push({ name, mimeType: info?.mimeType || null });
+      }
       if (name !== 'audio' && name !== 'file') {
         stream.resume();
         return;
@@ -44,11 +49,13 @@ function parseMultipart(buffer, contentType) {
       stream.on('data', (chunk) => chunks.push(chunk));
       stream.on('end', () => {
         audio = Buffer.concat(chunks);
+        if (meta) meta.audioBytes = audio.length;
       });
       stream.on('error', reject);
     });
 
     parser.on('field', (name, value) => {
+      if (meta?.fieldNames) meta.fieldNames.push(name);
       fields[name] = value;
     });
 
@@ -68,12 +75,28 @@ export async function parseRequestBody(event, options = {}) {
   const contentType = (header(event, 'content-type') || '').toLowerCase();
   const buffer = toBuffer(event);
 
+  // TEMPORARY diagnostics for the voice-upload incident. Safe by construction:
+  // content type, booleans and byte COUNTS only. This object never carries the
+  // request body, audio bytes, headers or credentials.
+  const meta = {
+    contentType: contentType || '(none)',
+    isBase64Encoded: Boolean(event?.isBase64Encoded),
+    rawBodyChars: typeof event?.body === 'string' ? event.body.length : 0,
+    decodedBytes: buffer.length,
+    transport: contentType.includes('multipart/form-data') ? 'multipart' : 'json',
+    files: [],
+    fieldNames: [],
+    audioBytes: 0,
+  };
+
   if (buffer.length > maxBytes) {
     throw new BadRequestError(`Audio exceeds the ${Math.round(maxBytes / 1024 / 1024)}MB limit`);
   }
 
   if (contentType.includes('multipart/form-data')) {
-    return parseMultipart(buffer, header(event, 'content-type'));
+    const parsed = await parseMultipart(buffer, header(event, 'content-type'), meta);
+    if (parsed.audio) meta.audioBytes = parsed.audio.length;
+    return { ...parsed, meta };
   }
 
   let json;
@@ -83,9 +106,14 @@ export async function parseRequestBody(event, options = {}) {
     throw new BadRequestError('Request body is not valid JSON');
   }
 
+  const audio = typeof json.audio === 'string' ? Buffer.from(json.audio, 'base64') : null;
+  meta.fieldNames = Object.keys(json);
+  meta.audioBytes = audio ? audio.length : 0;
+
   return {
-    audio: typeof json.audio === 'string' ? Buffer.from(json.audio, 'base64') : null,
+    audio,
     mimeType: json.mimeType || 'audio/webm',
     fields: json,
+    meta,
   };
 }

@@ -2,8 +2,13 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import glbUrl from '../../../laptop/gaming_laptop.glb?url';
 import { buildLaptopRig, type LaptopRig } from './rig';
+
+/**
+ * Runtime URL for the laptop model. Served from `public/laptop/` when present.
+ * The GLB is a local binary asset and is not committed to git.
+ */
+export const LAPTOP_GLB_URL = '/laptop/gaming_laptop.glb';
 
 const PRESETS = [0, 25, 50, 75, 100];
 
@@ -20,7 +25,7 @@ function RiggedModel({
   onRig: (rig: LaptopRig) => void;
   onError: (message: string) => void;
 }): JSX.Element | null {
-  const gltf = useLoader(GLTFLoader, glbUrl);
+  const gltf = useLoader(GLTFLoader, LAPTOP_GLB_URL);
   const invalidate = useThree((state) => state.invalidate);
   const [rig, setRig] = useState<LaptopRig | null>(null);
 
@@ -89,6 +94,27 @@ export default function LaptopLab(): JSX.Element | null {
   const [openness, setOpenness] = useState(1);
   const [rig, setRig] = useState<LaptopRig | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [modelAvailable, setModelAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(LAPTOP_GLB_URL, { method: 'HEAD' })
+      .then((res) => {
+        if (cancelled) return;
+        setModelAvailable(res.ok);
+        if (!res.ok) {
+          setError(`laptop model not found at ${LAPTOP_GLB_URL} — drop gaming_laptop.glb into public/laptop/ to enable the lab.`);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setModelAvailable(false);
+        setError(`laptop model not found at ${LAPTOP_GLB_URL} — drop gaming_laptop.glb into public/laptop/ to enable the lab.`);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const stats = useMemo(() => {
     if (!rig) return null;
@@ -121,7 +147,13 @@ export default function LaptopLab(): JSX.Element | null {
             <color attach="background" args={['#0a0a0a']} />
             <ambientLight intensity={0.9} />
             <directionalLight position={[4, 6, 3]} intensity={1.2} />
-            <RiggedModel openness={openness} onRig={setRig} onError={setError} />
+            {modelAvailable ? (
+              <RiggedModel openness={openness} onRig={setRig} onError={setError} />
+            ) : modelAvailable === false ? (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-500">
+                No laptop model — add public/laptop/gaming_laptop.glb
+              </div>
+            ) : null}
             <FitCamera rig={rig} />
           </Canvas>
         </Suspense>
@@ -221,7 +253,7 @@ export default function LaptopLab(): JSX.Element | null {
             </details>
           </dl>
         ) : (
-          <p className="text-zinc-500">Building rig…</p>
+          <p className="text-zinc-500">{modelAvailable === false ? 'Model unavailable — see notice.' : 'Building rig…'}</p>
         )}
       </aside>
     </div>

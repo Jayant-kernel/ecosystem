@@ -12,6 +12,8 @@ interface ConversationPanelProps {
     isListening: boolean;
     isSpeaking: boolean;
     isMuted: boolean;
+    handsFree: boolean;
+    toggleHandsFree: () => void;
     startSession: () => void;
     stopSession: () => void;
     toggleMute: () => void;
@@ -28,6 +30,8 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
     isListening,
     isSpeaking,
     isMuted,
+    handsFree,
+    toggleHandsFree,
     startSession,
     stopSession,
     toggleMute,
@@ -103,7 +107,7 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
         if (isSessionActive) {
             if (isMuted) return 'Mic Muted (Alt+M)';
             if (isSpeaking) return 'AI Speaking (Auto-Muted)';
-            if (isListening) return 'Listening...';
+            if (isListening) return handsFree ? 'Listening... (auto-stops when you pause)' : 'Listening...';
             return 'Session Active';
         }
         return 'Tap to Start';
@@ -272,6 +276,20 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
                                 <div className="w-10"></div> {/* Spacer for balance */}
                             </div>
                             <p className="text-center text-[10px] text-zinc-600 mt-3 font-medium uppercase tracking-widest">{getStatusText()}</p>
+                            <div className="mt-2 flex justify-center">
+                                <button
+                                    onClick={toggleHandsFree}
+                                    title="End the turn automatically when you stop speaking"
+                                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                                        handsFree
+                                            ? 'border-orange-500/30 bg-orange-500/10 text-orange-300 hover:bg-orange-500/20'
+                                            : 'border-white/10 bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300'
+                                    }`}
+                                >
+                                    <i className={`fas ${handsFree ? 'fa-wand-magic-sparkles' : 'fa-hand-pointer'}`}></i>
+                                    Auto-stop {handsFree ? 'on' : 'off'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

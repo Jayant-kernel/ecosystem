@@ -4,6 +4,24 @@ import { voiceService, base64ToBlob } from '../services/voiceService';
 
 const MAX_HISTORY_TURNS = 8;
 
+/**
+ * Hands-free recording: stop automatically once the learner stops speaking.
+ *
+ * Tuned by ear. Raise `threshold` for a noisy room, raise `silenceMs` if it cuts
+ * people off mid-thought, lower it if it feels slow. Manual tap-to-stop always
+ * still works, and this can be switched off from the mic panel.
+ */
+const HANDS_FREE = {
+  /** RMS below this counts as silence (0-1). Lower = catches soft speakers. */
+  threshold: 0.035,
+  /** Stop after this much silence, once speech has actually started. */
+  silenceMs: 1200,
+  /** Ignore brief blips: require this much voiced time before arming the stop. */
+  minSpeechMs: 350,
+  /** Hard cap, so a noisy room can never record forever. */
+  maxMs: 30000,
+};
+
 /** Trim a context string so a single lesson cannot bloat the prompt. */
 const clip = (value: string | undefined, max: number): string | undefined => {
   if (!value) return undefined;
@@ -46,6 +64,7 @@ export const useVoiceTutor = (
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [handsFree, setHandsFree] = useState(true);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -55,6 +74,22 @@ export const useVoiceTutor = (
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const finishPlaybackRef = useRef<(() => void) | null>(null);
   const introPlayedRef = useRef<string | null>(null);
+
+  // Hands-free (voice activity) plumbing.
+  const handsFreeRef = useRef(handsFree);
+  const isMutedRef = useRef(isMuted);
+  const stopSessionRef = useRef<() => void>(() => {});
+  const vadRef = useRef<{
+    ctx: AudioContext;
+    analyser: AnalyserNode;
+    raf: number;
+    maxTimer: number;
+    speechStartedAt: number | null;
+    lastVoiceAt: number;
+  } | null>(null);
+
+  useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
 
   const onStreamRef = useRef(onStreamMessage);
   useEffect(() => { onStreamRef.current = onStreamMessage; }, [onStreamMessage]);
@@ -130,6 +165,87 @@ export const useVoiceTutor = (
       audio.play().catch(finish);
     });
   }, []);
+
+  /** Tear down the voice-activity watcher (safe to call at any time). */
+  const stopVad = useCallback(() => {
+    const vad = vadRef.current;
+    if (!vad) return;
+    vadRef.current = null;
+    cancelAnimationFrame(vad.raf);
+    window.clearTimeout(vad.maxTimer);
+    void vad.ctx.close().catch(() => {});
+  }, []);
+
+  /**
+   * Watch the live microphone level and end the turn when the learner pauses.
+   * Falls back silently to manual tap-to-stop if Web Audio is unavailable.
+   */
+  const startVad = useCallback((stream: MediaStream) => {
+    stopVad();
+    if (!handsFreeRef.current) return;
+
+    try {
+      const Ctx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!Ctx) return;
+
+      const ctx: AudioContext = new Ctx();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+
+      const samples = new Float32Array(analyser.fftSize);
+      const startedAt = performance.now();
+      const vad = {
+        ctx,
+        analyser,
+        raf: 0,
+        maxTimer: 0,
+        speechStartedAt: null as number | null,
+        lastVoiceAt: startedAt,
+      };
+      vadRef.current = vad;
+
+      // Safety net: never record past maxMs, even if nobody speaks.
+      vad.maxTimer = window.setTimeout(() => {
+        const recorder = recorderRef.current;
+        if (recorder && recorder.state !== 'inactive') stopSessionRef.current();
+      }, HANDS_FREE.maxMs);
+
+      const tick = () => {
+        const current = vadRef.current;
+        if (!current) return;
+
+        current.analyser.getFloatTimeDomainData(samples);
+        let sum = 0;
+        for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+        const rms = Math.sqrt(sum / samples.length);
+        const now = performance.now();
+
+        // While muted we cannot hear them, so never auto-stop on silence.
+        const muted = isMutedRef.current;
+        if (!muted && rms >= HANDS_FREE.threshold) {
+          if (current.speechStartedAt === null) current.speechStartedAt = now;
+          current.lastVoiceAt = now;
+        }
+
+        const spokeLongEnough =
+          current.speechStartedAt !== null &&
+          current.lastVoiceAt - current.speechStartedAt >= HANDS_FREE.minSpeechMs;
+        const pausedLongEnough = now - current.lastVoiceAt >= HANDS_FREE.silenceMs;
+
+        if (!muted && spokeLongEnough && pausedLongEnough) {
+          stopSessionRef.current();
+          return;
+        }
+
+        current.raf = requestAnimationFrame(tick);
+      };
+
+      vad.raf = requestAnimationFrame(tick);
+    } catch {
+      /* No Web Audio: the learner just taps the mic to stop, as before. */
+    }
+  }, [stopVad]);
 
   const lessonContext = useCallback(() => ({
     courseTitle,
@@ -266,6 +382,7 @@ export const useVoiceTutor = (
       recorder.start();
       setIsRecording(true);
       setIsMuted(false);
+      startVad(stream);
     } catch (error: any) {
       releaseStream();
       setSessionError(
@@ -274,16 +391,33 @@ export const useVoiceTutor = (
           : error?.message || 'Could not access the microphone.',
       );
     }
-  }, [currentLesson?.id, isProcessing, isRecording, playIntro, releaseStream, sendRecording]);
+  }, [currentLesson?.id, isProcessing, isRecording, playIntro, releaseStream, sendRecording, startVad]);
 
   const stopSession = useCallback(() => {
+    stopVad();
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
       recorder.stop();
     }
     releaseStream();
     setIsRecording(false);
-  }, [releaseStream]);
+  }, [releaseStream, stopVad]);
+
+  // Let the voice-activity watcher end the turn through the normal stop path.
+  useEffect(() => { stopSessionRef.current = stopSession; }, [stopSession]);
+
+  const toggleHandsFree = useCallback(() => {
+    const next = !handsFree;
+    setHandsFree(next);
+    handsFreeRef.current = next;
+    const recorder = recorderRef.current;
+    const recording = !!recorder && recorder.state !== 'inactive';
+    if (!next) {
+      stopVad();
+    } else if (recording && streamRef.current) {
+      startVad(streamRef.current);
+    }
+  }, [handsFree, startVad, stopVad]);
 
   const toggleMute = useCallback(() => {
     const stream = streamRef.current;
@@ -294,11 +428,12 @@ export const useVoiceTutor = (
   }, [isMuted]);
 
   useEffect(() => () => {
+    stopVad();
     stopPlayback();
     const recorder = recorderRef.current;
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     releaseStream();
-  }, [releaseStream, stopPlayback]);
+  }, [releaseStream, stopPlayback, stopVad]);
 
   /** Play server-generated audio (e.g. a chapter intro) outside a recording. */
   const playExternalAudio = useCallback(async (base64: string, mimeType: string) => {
@@ -312,6 +447,8 @@ export const useVoiceTutor = (
     isSpeaking: isPlaying,
     isListening: isRecording,
     isMuted,
+    handsFree,
+    toggleHandsFree,
     startSession,
     stopSession,
     toggleMute,

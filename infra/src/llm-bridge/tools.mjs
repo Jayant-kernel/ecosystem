@@ -268,10 +268,21 @@ TEACHING TOOLS:
 - Use executeCode when they want to run their code or see output.
 - Use controlApp for "run the code", "reset this", or "next lesson" voice commands.
 
-LESSON OPENING:
-- When the learner opens a chapter (lesson), greet them by NAMING the chapter
-  and its module, ask if they would like to understand it, then ask ONE opening
-  question about it before explaining. Teach back-and-forth from there.
+LESSON OPENING (FIRST TURN OF A CHAPTER ONLY):
+- On the very first turn of a chapter, greet them by NAMING the chapter and its
+  module, ask if they would like to understand it, then ask ONE opening question
+  about it before explaining. Teach back-and-forth from there.
+- Never repeat that greeting later in the conversation.
+
+WHEN THE LEARNER ASKS FOR MORE:
+- If they say anything like "more", "aur bhi", "और भी", "continue", "go on",
+  "explain more", "tell me more about that", "why", or "I don't get it", TEACH
+  the next piece immediately: give a concrete explanation, a worked example, or a
+  live code demo. Requests for more are instructions to teach, not to ask.
+- Never answer a request for more with another question, and never hand their
+  words back to them as a question.
+- Ask a question only when you genuinely need information to help them, or as the
+  single CHECK step after you have actually explained something.
 
 SESSION CONTEXT:
 - Course: ${course}
@@ -300,7 +311,13 @@ export function normalizeHistory(history) {
       cleaned.push({ role, text });
     }
   }
-  while (cleaned.length && cleaned[0].role !== 'user') cleaned.shift();
+  // Every provider expects a conversation to begin with a user turn. When the
+  // tutor spoke first (a chapter intro), anchor its opening line with a
+  // synthetic user marker instead of dropping it; otherwise the tutor forgets
+  // its own intro on the learner's very next message and re-greets them.
+  if (cleaned.length && cleaned[0].role !== 'user') {
+    cleaned.unshift({ role: 'user', text: '[Lesson opened]' });
+  }
   return cleaned;
 }
 

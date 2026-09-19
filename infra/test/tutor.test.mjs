@@ -89,7 +89,7 @@ test('buildSystemPrompt names the chapter module and the highlight workflow', ()
   assert.match(prompt, /LESSON OPENING/);
 });
 
-test('normalizeHistory drops leading assistant turns and merges same roles', () => {
+test('normalizeHistory merges same roles and anchors a leading assistant turn', () => {
   const history = normalizeHistory([
     { role: 'assistant', content: 'stale leading reply' },
     { role: 'user', content: 'first' },
@@ -98,9 +98,30 @@ test('normalizeHistory drops leading assistant turns and merges same roles', () 
   ]);
 
   assert.deepEqual(history, [
+    { role: 'user', text: '[Lesson opened]' },
+    { role: 'assistant', text: 'stale leading reply' },
     { role: 'user', text: 'first\nsecond' },
     { role: 'assistant', text: 'reply' },
   ]);
+});
+
+test('the tutor remembers its own chapter intro on the next turn', () => {
+  const history = normalizeHistory([
+    { role: 'assistant', content: 'Namaste! Would you like to understand cloud computing?' },
+  ]);
+
+  assert.equal(history[0].role, 'user', 'providers need a user turn first');
+  assert.equal(history[1].role, 'assistant');
+  assert.match(history[1].text, /Namaste/);
+});
+
+test('system prompt tells the tutor to teach when the learner asks for more', () => {
+  const prompt = buildSystemPrompt({ lessonTitle: 'Cloud Computing' });
+
+  assert.match(prompt, /ASKS FOR MORE/);
+  assert.match(prompt, /और भी/);
+  assert.match(prompt, /Never answer a request for more with another question/);
+  assert.match(prompt, /FIRST TURN OF A CHAPTER ONLY/);
 });
 
 test('system prompt keeps the tutor inside the course it was opened for', () => {
