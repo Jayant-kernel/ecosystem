@@ -22,6 +22,7 @@ Parameters:
     Description: ElevenLabs API key (xi-api-key). Server-side only; never sent to the client.
   ElevenLabsVoiceId:
     Type: String
+    Default: y0IUmXZMBt1M9uXCVcPL
     Description: ElevenLabs voice id used for TTS (no agent required).
   GeminiApiKey:
     Type: String
