@@ -37,7 +37,15 @@ export const CAMERA_KEYS: CameraKeyframe[] = [
 export const HINGE_POINT: Vector3Tuple = [-1.199, 0.096, 0];
 
 export const TIMELINE: TimelineConfig = {
-  runwayViewportHeights: 4.2,
+  /**
+   * Runway length (viewports). Sized so each beat owns enough scroll travel:
+   * at 420vh the handoff window (0.68–0.83) spanned barely ~400px — a single
+   * wheel flick could cross it before the damped camera arrived, making the
+   * sequence feel skipped. 520vh stretches every beat ~31% (handoff ≈500px+)
+   * so aggressive scrolls land mid-sequence with travel remaining instead of
+   * at the exit. Pure input gain: all `t` mappings below are unchanged.
+   */
+  runwayViewportHeights: 5.2,
   lidStartDistance: 8.0,
   lidFullOpenDistance: 7.0,
   displayFillStartT: 0.9,
