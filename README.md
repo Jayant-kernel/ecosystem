@@ -122,6 +122,190 @@ sam deploy --guided --template infra/template.yaml \
 Copy the `ApiBaseUrl` stack output into `.env` as `VITE_API_BASE_URL`, then
 rebuild the frontend. That's it — no ElevenLabs agent configuration step.
 
+## 🔁 Continuous deployment (Lambda backend)
+
+Every push to `main` that touches `infra/**` (or the workflow file itself)
+automatically runs `.github/workflows/deploy-lambda.yml`:
+
+```
+GitHub push to main (infra/**)
+  → checkout → Node 20 → npm ci (infra/src/llm-bridge)
+  → npm test (mocked, no external calls, no secrets needed)
+  → sam build → OIDC login to AWS → sam deploy (stack sam-app, ap-south-1)
+```
+
+The workflow never builds or deploys the frontend. Any step failing fails
+the whole run and nothing is deployed.
+
+### One-time setup
+
+1. **AWS: add the GitHub OIDC provider** (once per account — skip if it
+   already exists):
+
+   ```bash
+   aws iam create-open-id-connect-provider \
+     --url https://token.actions.githubusercontent.com \
+     --client-id-list sts.amazonaws.com
+   ```
+
+2. **AWS: create the deploy role** `github-deploy-ecosystem-lambda` with this
+   trust policy (replace `ACCOUNT_ID` with your AWS account id). It only
+   allows this repo's `main` branch — including manual `workflow_dispatch`
+   runs on `main` — to assume the role:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Principal": {
+           "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+         },
+         "Action": "sts:AssumeRoleWithWebIdentity",
+         "Condition": {
+           "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+           "StringLike": { "token.actions.githubusercontent.com:sub": "repo:Jayant-kernel/ecosystem-tutor:ref:refs/heads/main" }
+         }
+       }
+     ]
+   }
+   ```
+
+3. **AWS: attach this least-privilege permissions policy** to the role
+   (replace `ACCOUNT_ID`). It is scoped to the `sam-app` stack, its
+   `sam-app-*` functions/roles/log groups, and the SAM-managed S3
+   deployment buckets in `ap-south-1`:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "CloudFormationRead",
+         "Effect": "Allow",
+         "Action": [
+           "cloudformation:Describe*",
+           "cloudformation:List*",
+           "cloudformation:Get*",
+           "cloudformation:ValidateTemplate"
+         ],
+         "Resource": "*"
+       },
+       {
+         "Sid": "CloudFormationDeploy",
+         "Effect": "Allow",
+         "Action": [
+           "cloudformation:CreateStack",
+           "cloudformation:UpdateStack",
+           "cloudformation:CreateChangeSet",
+           "cloudformation:DeleteChangeSet",
+           "cloudformation:ExecuteChangeSet"
+         ],
+         "Resource": [
+           "arn:aws:cloudformation:ap-south-1:ACCOUNT_ID:stack/sam-app",
+           "arn:aws:cloudformation:ap-south-1:ACCOUNT_ID:stack/sam-app/*"
+         ]
+       },
+       {
+         "Sid": "SamArtifacts",
+         "Effect": "Allow",
+         "Action": ["s3:*"],
+         "Resource": [
+           "arn:aws:s3:::aws-sam-cli-managed-default-*",
+           "arn:aws:s3:::aws-sam-cli-managed-default-*/*"
+         ]
+       },
+       {
+         "Sid": "Lambda",
+         "Effect": "Allow",
+         "Action": ["lambda:*"],
+         "Resource": [
+           "arn:aws:lambda:ap-south-1:ACCOUNT_ID:function:sam-app-*",
+           "arn:aws:lambda:ap-south-1:ACCOUNT_ID:function:sam-app-*:*"
+         ]
+       },
+       {
+         "Sid": "ApiGateway",
+         "Effect": "Allow",
+         "Action": ["apigateway:*"],
+         "Resource": [
+           "arn:aws:apigateway:ap-south-1::/restapis",
+           "arn:aws:apigateway:ap-south-1::/restapis/*"
+         ]
+       },
+       {
+         "Sid": "FunctionRoles",
+         "Effect": "Allow",
+         "Action": [
+           "iam:GetRole",
+           "iam:CreateRole",
+           "iam:DeleteRole",
+           "iam:TagRole",
+           "iam:UntagRole",
+           "iam:PutRolePolicy",
+           "iam:DeleteRolePolicy",
+           "iam:AttachRolePolicy",
+           "iam:DetachRolePolicy",
+           "iam:GetRolePolicy",
+           "iam:ListRolePolicies",
+           "iam:ListAttachedRolePolicies",
+           "iam:PassRole",
+           "iam:UpdateAssumeRolePolicy"
+         ],
+         "Resource": "arn:aws:iam::ACCOUNT_ID:role/sam-app-*"
+       },
+       {
+         "Sid": "FunctionLogs",
+         "Effect": "Allow",
+         "Action": ["logs:*"],
+         "Resource": "arn:aws:logs:ap-south-1:ACCOUNT_ID:log-group:/aws/lambda/sam-app-*:*"
+       }
+     ]
+   }
+   ```
+
+4. **GitHub: add repository secrets** (repo → Settings → Secrets and
+   variables → Actions → New repository secret):
+
+   | Secret | Value |
+   |--------|-------|
+   | `AWS_DEPLOY_ROLE_ARN` | ARN of the role from step 2 |
+   | `ELEVENLABS_API_KEY` | ElevenLabs API key (`xi-api-key`) |
+   | `ELEVENLABS_VOICE_ID` | ElevenLabs voice id used for TTS |
+   | `GEMINI_API_KEY` | Gemini API key (temporary tutor LLM) |
+
+   All other SAM parameters (`LlmProvider`, model ids, `AllowedOrigin`, …)
+   keep their `infra/template.yaml` defaults. Never commit these values to
+   the repo — `samconfig.toml` deliberately stores no secrets.
+
+### Manual deploy
+
+Repo → Actions → "Deploy Lambda backend" → Run workflow. Manual runs
+ignore the `infra/**` path filter, so you can redeploy unchanged code
+(e.g. after rotating a secret or for rollback).
+
+### Inspecting failed deployments
+
+- Actions tab → the failed run → open the failed step's logs (secrets are
+  automatically masked).
+- For `sam deploy` failures: AWS console → CloudFormation → stack `sam-app`
+  → Events tab shows the exact failing resource.
+- For runtime errors after a green deploy: CloudWatch → Log groups →
+  `/aws/lambda/sam-app-*`.
+
+### Rollback
+
+- A **failed** `sam deploy` automatically rolls the stack back
+  (CloudFormation `UPDATE_ROLLBACK`) — the previous Lambda and API Gateway
+  keep serving.
+- To revert a **successful but bad** deploy, redeploy the last good code:
+  `git revert` the offending commit on `main` (triggers the workflow), or
+  run the workflow manually from the last good ref. The template publishes
+  no Lambda versions/aliases, so redeploying previous code *is* the
+  rollback. Stack deletion is never done automatically — do it manually in
+  CloudFormation if you ever need it.
+
 ## 🧪 Tests
 
 ```bash

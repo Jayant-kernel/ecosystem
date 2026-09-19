@@ -45,10 +45,16 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-/** Renders real product content to a live CanvasTexture for the laptop display. */
+/**
+ * Renders real product content to a live CanvasTexture for the laptop display.
+ *
+ * Rendered at 2048x1280 (2x the logical 1024x640 layout via ctx.scale, so all
+ * drawing coordinates below are unchanged) to keep text crisp when the camera
+ * is close to the screen. Aspect ratio is preserved exactly.
+ */
 export function createVoiceScreenTexture(content: VoiceScreenContent = DEFAULT_VOICE_SCREEN_CONTENT): THREE.CanvasTexture {
-  const width = 1024;
-  const height = 640;
+  const width = 2048;
+  const height = 1280;
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -56,6 +62,7 @@ export function createVoiceScreenTexture(content: VoiceScreenContent = DEFAULT_V
   if (!ctx) {
     throw new Error('2D canvas context is unavailable for the laptop display.');
   }
+  ctx.scale(2, 2);
 
   ctx.fillStyle = '#0B0B0F';
   ctx.fillRect(0, 0, width, height);
@@ -116,6 +123,11 @@ export function createVoiceScreenTexture(content: VoiceScreenContent = DEFAULT_V
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  // Trilinear filtering with mipmaps for minification; anisotropy is raised
+  // to the renderer maximum (capped) by the caller for glancing angles.
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
   texture.anisotropy = 4;
   return texture;
 }

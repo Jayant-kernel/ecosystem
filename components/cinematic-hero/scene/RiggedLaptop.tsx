@@ -1,18 +1,12 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFrame, useLoader, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import glbUrl from '../../../laptop/gaming_laptop.glb?url';
 import { buildLaptopRig, type LaptopRig } from '../laptop-lab/rig';
 import { filmDriver } from '../filmDriver';
 import { sampleTimeline } from '../timeline';
 import { createVoiceScreenTexture, type VoiceScreenContent } from './VoiceScreen';
-
-/**
- * Runtime URL for the laptop model. Served from `public/laptop/` when present.
- * The GLB is a local binary asset and is not committed to git, so the scene
- * must tolerate it being absent (renders nothing, like the Laptop placeholder).
- */
-export const LAPTOP_GLB_URL = '/laptop/gaming_laptop.glb';
 
 interface LiveRig {
   rig: LaptopRig;
@@ -25,39 +19,11 @@ interface LiveRig {
  * The production laptop: actual GLB + the shared LidPivot rig, driven by the
  * same scroll timeline as the camera. Openness and screen glow are pure
  * functions of film time, so reverse scrolling reverses them exactly.
- *
- * Renders nothing until the GLB exists at `public/laptop/gaming_laptop.glb` —
- * the binary is not committed, so a missing model degrades to the same empty
- * scene as the Laptop placeholder instead of crashing the page.
  */
 export default function RiggedLaptop({ content }: { content?: VoiceScreenContent }): JSX.Element | null {
-  const [modelAvailable, setModelAvailable] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(LAPTOP_GLB_URL, { method: 'HEAD' })
-      .then((res) => {
-        if (!cancelled) setModelAvailable(res.ok);
-      })
-      .catch(() => {
-        if (!cancelled) setModelAvailable(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (!modelAvailable) return null;
-  return (
-    <Suspense fallback={null}>
-      <RiggedLaptopModel content={content} />
-    </Suspense>
-  );
-}
-
-function RiggedLaptopModel({ content }: { content?: VoiceScreenContent }): JSX.Element | null {
-  const gltf = useLoader(GLTFLoader, LAPTOP_GLB_URL);
+  const gltf = useLoader(GLTFLoader, glbUrl);
   const invalidate = useThree((state) => state.invalidate);
+  const gl = useThree((state) => state.gl);
   const contentRef = useRef(content);
   contentRef.current = content;
   const liveRef = useRef<LiveRig | null>(null);
@@ -71,6 +37,9 @@ function RiggedLaptopModel({ content }: { content?: VoiceScreenContent }): JSX.E
     if (rig.screenMesh) {
       previousMaterial = rig.screenMesh.material;
       screenTexture = createVoiceScreenTexture(contentRef.current);
+      // Real renderer cap (bounded at 8) for crisp text at glancing angles.
+      screenTexture.anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+      screenTexture.needsUpdate = true;
       screenMaterial = new THREE.MeshBasicMaterial({ map: screenTexture });
       rig.screenMesh.material = screenMaterial;
     }
@@ -89,7 +58,7 @@ function RiggedLaptopModel({ content }: { content?: VoiceScreenContent }): JSX.E
       live.screenTexture?.dispose();
       live.rig.dispose();
     };
-  }, [gltf, invalidate]);
+  }, [gltf, gl, invalidate]);
 
   useFrame(() => {
     const live = liveRef.current;

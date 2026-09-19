@@ -45,8 +45,8 @@ export default function CinematicCanvas({ screenContent }: { screenContent?: Voi
     >
       <Canvas
         frameloop="demand"
-        dpr={[1, 1.75]}
-        gl={{ antialias: false, powerPreference: 'high-performance', stencil: false }}
+        dpr={[1, 2]}
+        gl={{ antialias: true, powerPreference: 'high-performance', stencil: false }}
         camera={{
           fov: INITIAL_CAMERA.fov,
           near: 0.05,
