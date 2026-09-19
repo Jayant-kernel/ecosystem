@@ -94,7 +94,7 @@ export function createHandler(deps = {}) {
   } = deps;
 
   let llmProvider = provider;
-  const getProvider = () => llmProvider || (llmProvider = createProvider(env));
+  const getProvider = () => llmProvider || (llmProvider = createProvider(env, { logger }));
 
   async function handleVoice(event) {
     const origin = env.ALLOWED_ORIGIN || '*';

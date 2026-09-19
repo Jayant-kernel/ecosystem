@@ -4,10 +4,38 @@ import { createProvider, generateTutorResponse, buildSystemPrompt } from '../src
 import { normalizeHistory, selectTools, TOOLS, THEORY_TOOLS, toolResultText } from '../src/llm-bridge/tools.mjs';
 import { buildIntro } from '../src/llm-bridge/index.mjs';
 
-test('createProvider defaults to gemini and honours LLM_PROVIDER=bedrock', () => {
+test('createProvider defaults to gemini and honours LLM_PROVIDER', () => {
   assert.equal(createProvider({}).name, 'gemini');
   assert.equal(createProvider({ LLM_PROVIDER: 'gemini' }).name, 'gemini');
   assert.equal(createProvider({ LLM_PROVIDER: 'bedrock' }).name, 'bedrock');
+  assert.equal(createProvider({ LLM_PROVIDER: 'grok' }).name, 'grok');
+});
+
+test('createProvider falls back to the secondary provider when the primary fails', async () => {
+  const provider = createProvider(
+    { LLM_PROVIDER: 'grok', LLM_FALLBACK_PROVIDER: 'gemini', GROK_API_KEY: 'x' },
+    {
+      // Grok is rate limited.
+      grok: { fetchImpl: async () => ({ ok: false, status: 429, text: async () => 'rate limited' }) },
+      // Gemini answers.
+      gemini: { client: { models: { generateContent: async () => ({ text: 'gemini here' }) } } },
+      logger: { warn() {} },
+    },
+  );
+
+  assert.equal(provider.name, 'grok+gemini');
+  const result = await provider.generateTutorResponse({ system: 's', transcript: 't', context: {} });
+  assert.equal(result.text, 'gemini here');
+});
+
+test('createProvider without a fallback surfaces the primary failure', async () => {
+  const provider = createProvider(
+    { LLM_PROVIDER: 'grok', GROK_API_KEY: 'x' },
+    { grok: { fetchImpl: async () => ({ ok: false, status: 429, text: async () => 'nope' }) } },
+  );
+
+  assert.equal(provider.name, 'grok');
+  await assert.rejects(() => provider.generateTutorResponse({ system: 's', transcript: 't', context: {} }));
 });
 
 test('generateTutorResponse builds the system prompt and delegates to the provider', async () => {

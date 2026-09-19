@@ -151,6 +151,13 @@ jobs:
               ElevenLabsApiKey="${{ secrets.ELEVENLABS_API_KEY }}" \
               ElevenLabsVoiceId="${{ secrets.ELEVENLABS_VOICE_ID }}" \
               GeminiApiKey="${{ secrets.GEMINI_API_KEY }}" \
+              GroqApiKey="${{ secrets.GROQ_API_KEY }}" \
+              LlmProvider=groq \
+              LlmFallbackProvider=gemini \
+              GroqModelId=openai/gpt-oss-20b \
+              GroqReasoningEffort=low \
+              GrokApiKey="${{ secrets.GROK_API_KEY }}" \
+              GrokModelId=grok-4-fast \
               TtsModelId=eleven_turbo_v2_5 \
               TtsOutputFormat=mp3_44100_64 \
               TtsSpeed=0.98 \

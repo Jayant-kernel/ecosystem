@@ -1,4 +1,6 @@
-export const MAX_TOOL_ITERATIONS = 3;
+// Kept low on purpose: every extra pass is another billed + rate-limited LLM
+// call, and one turn should cost one or two calls at most.
+export const MAX_TOOL_ITERATIONS = 2;
 export const MAX_HISTORY_TURNS = 8;
 
 /**

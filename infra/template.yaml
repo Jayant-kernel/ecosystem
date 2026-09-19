@@ -33,11 +33,42 @@ Parameters:
     Description: Gemini model id used as the temporary tutor brain.
   LlmProvider:
     Type: String
-    Default: gemini
+    Default: groq
     AllowedValues:
+      - groq
+      - grok
       - gemini
       - bedrock
-    Description: Which LLM provider the tutor uses. Switch back with 'bedrock' once model access is granted.
+    Description: Primary LLM provider for the tutor.
+  LlmFallbackProvider:
+    Type: String
+    Default: gemini
+    Description: >-
+      Providers tried in order when the primary fails (rate limit, outage, bad
+      key). Accepts a comma-separated chain, e.g. "gemini" or "grok,gemini".
+      Set to 'none' to disable fallback.
+  GroqApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Groq API key (console.groq.com). Server-side only.
+  GroqModelId:
+    Type: String
+    Default: openai/gpt-oss-20b
+    Description: Groq model id used when LlmProvider=groq.
+  GroqReasoningEffort:
+    Type: String
+    Default: low
+    Description: Reasoning effort for gpt-oss models (low keeps spoken replies fast).
+  GrokApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: xAI (Grok) API key. Server-side only; never sent to the browser.
+  GrokModelId:
+    Type: String
+    Default: grok-4-fast
+    Description: xAI Grok model id. Confirm the exact name available to your key.
   BedrockModelId:
     Type: String
     Default: anthropic.claude-3-haiku-20240307-v1:0
@@ -105,6 +136,12 @@ Resources:
           ELEVENLABS_API_KEY: !Ref ElevenLabsApiKey
           ELEVENLABS_VOICE_ID: !Ref ElevenLabsVoiceId
           LLM_PROVIDER: !Ref LlmProvider
+          LLM_FALLBACK_PROVIDER: !Ref LlmFallbackProvider
+          GROQ_API_KEY: !Ref GroqApiKey
+          GROQ_MODEL_ID: !Ref GroqModelId
+          GROQ_REASONING_EFFORT: !Ref GroqReasoningEffort
+          GROK_API_KEY: !Ref GrokApiKey
+          GROK_MODEL_ID: !Ref GrokModelId
           GEMINI_API_KEY: !Ref GeminiApiKey
           GEMINI_MODEL_ID: !Ref GeminiModelId
           BEDROCK_MODEL_ID: !Ref BedrockModelId
