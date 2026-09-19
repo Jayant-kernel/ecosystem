@@ -44,6 +44,9 @@ export function createBedrockProvider(env = process.env, deps = {}) {
 
       const toolCalls = [];
       let text = '';
+      // Visual plans carry their diagram as tool-call JSON, which needs far
+      // more room than a spoken reply. Spoken turns keep the tight budget.
+      const maxTokens = tools.some((tool) => tool?.name === 'presentVisualExplanation') ? 800 : 220;
 
       for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
         const response = await converse(getClient(), {
@@ -52,7 +55,7 @@ export function createBedrockProvider(env = process.env, deps = {}) {
           messages,
           toolConfig,
           // Short by design: this is spoken back, and long text costs latency.
-          inferenceConfig: { maxTokens: 220, temperature: 0.4 },
+          inferenceConfig: { maxTokens, temperature: 0.4 },
         });
 
         const content = response?.output?.message?.content || [];

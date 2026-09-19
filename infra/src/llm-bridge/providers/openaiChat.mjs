@@ -69,6 +69,10 @@ export function createOpenAIChatProvider({
       const messages = messagesFor(system, history, transcript);
       const toolCalls = [];
       let text = '';
+      // Visual plans carry their diagram as tool-call JSON, which needs far
+      // more room than a spoken reply. Spoken turns keep the tight budget.
+      const wantsVisualPlan = tools.some((tool) => tool?.name === 'presentVisualExplanation');
+      const maxTokens = wantsVisualPlan ? 800 : 220;
 
       for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
         const payload = {
@@ -76,7 +80,7 @@ export function createOpenAIChatProvider({
           messages,
           temperature: 0.4,
           // Short by design: this is spoken back, and long text costs latency.
-          max_tokens: 220,
+          max_tokens: maxTokens,
           ...extraBody,
         };
         if (tools.length) {

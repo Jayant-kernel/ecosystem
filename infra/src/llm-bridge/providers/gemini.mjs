@@ -46,7 +46,7 @@ function callsOf(response) {
   return parts.filter((part) => part.functionCall).map((part) => part.functionCall);
 }
 
-async function callGemini(ai, { model, contents, system, functionDeclarations }) {
+async function callGemini(ai, { model, contents, system, functionDeclarations, maxOutputTokens = 220 }) {
   try {
     return await ai.models.generateContent({
       model,
@@ -55,7 +55,8 @@ async function callGemini(ai, { model, contents, system, functionDeclarations })
         systemInstruction: system,
         temperature: 0.4,
         // Short by design: this is spoken back, and long text costs latency.
-        maxOutputTokens: 220,
+        // Visual plans carry diagram JSON in tool args, so they get headroom.
+        maxOutputTokens,
         tools: [{ functionDeclarations }],
       },
     });
@@ -91,9 +92,10 @@ export function createGeminiProvider(env = process.env, deps = {}) {
       const contents = toGeminiContents(history, transcript);
       const toolCalls = [];
       let text = '';
+      const maxOutputTokens = tools.some((tool) => tool?.name === 'presentVisualExplanation') ? 800 : 220;
 
       for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-        const response = await callGemini(getClient(), { model, contents, system, functionDeclarations });
+        const response = await callGemini(getClient(), { model, contents, system, functionDeclarations, maxOutputTokens });
 
         const turnText = textOf(response);
         if (turnText) text += text ? `\n${turnText}` : turnText;

@@ -26,8 +26,18 @@ export function validateVisualPlan(input: unknown): VisualValidation {
     if (!string(value.id, 48) || !ID.test(value.id as string) || seen.has(value.id as string) || !string(value.label, 60) || !VISUAL_NODE_TYPES.includes(value.type as never)) {
       return { success: false, error: 'Visual node has an invalid id, label, or type.' };
     }
+    let position: VisualPlan['nodes'][number]['position'];
+    if (value.position !== undefined) {
+      const pos = value.position as Record<string, unknown>;
+      const x = Number(pos?.x);
+      const y = Number(pos?.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > 10000 || Math.abs(y) > 10000) {
+        return { success: false, error: 'Visual node has an invalid position.' };
+      }
+      position = { x, y };
+    }
     seen.add(value.id as string);
-    nodes.push({ id: value.id as string, label: (value.label as string).trim(), type: value.type as VisualPlan['nodes'][number]['type'], detail: string(value.detail, 120) ? (value.detail as string).trim() : undefined });
+    nodes.push({ id: value.id as string, label: (value.label as string).trim(), type: value.type as VisualPlan['nodes'][number]['type'], detail: string(value.detail, 120) ? (value.detail as string).trim() : undefined, ...(position ? { position } : {}) });
   }
   const edgeIds = new Set<string>();
   const edges = [] as VisualPlan['edges'];

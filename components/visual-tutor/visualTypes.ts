@@ -7,7 +7,18 @@ export type VisualNodeType = typeof VISUAL_NODE_TYPES[number];
 export type VisualActionType = typeof VISUAL_ACTION_TYPES[number];
 export type VisualStatus = 'idle' | 'offered' | 'playing' | 'paused' | 'interactive' | 'completed' | 'error';
 
-export interface VisualNode { id: string; label: string; type: VisualNodeType; detail?: string; }
+export interface VisualNode {
+  id: string;
+  label: string;
+  type: VisualNodeType;
+  detail?: string;
+  /**
+   * Canonical layout position in flow coordinates. The AI never generates
+   * this (positions come from the adapter's auto-layout or user drags); it
+   * is preserved across graph mutations so stable IDs keep stable places.
+   */
+  position?: { x: number; y: number };
+}
 export interface VisualEdge { id: string; from: string; to: string; label?: string; }
 export interface VisualStep { type: VisualActionType; target?: string; text?: string; durationMs?: number; }
 export interface VisualPlan { title: string; nodes: VisualNode[]; edges: VisualEdge[]; steps: VisualStep[]; }

@@ -107,6 +107,8 @@ export function labelForWalk(lines: number[], note: string | null): string {
 /** One interactive teaching step: a single validated target plus its label. */
 export interface TeachingStep {
   key: string;
+  /** 'code' steps use the line/column/range fields; diagram steps use diagram. */
+  kind: 'code' | 'diagram_node' | 'diagram_edge';
   startLine: number;
   endLine: number;
   /** Exact expression column for the pointer, or null for line focus. */
@@ -114,6 +116,8 @@ export interface TeachingStep {
   label: string;
   /** Exact range glow, or null for whole-line glow. */
   range: TeachingRange | null;
+  /** Stable diagram node/edge id for diagram steps. */
+  diagramId?: string;
 }
 
 /**
@@ -129,6 +133,7 @@ export function createTeachingSteps(targets: ResolvedTeachingTarget[]): Teaching
     return [
       {
         key: `teaching-step-${index}`,
+        kind: 'code',
         startLine: lines[0],
         endLine: lines[lines.length - 1],
         column: target.kind === 'range' ? target.range.startColumn : null,
@@ -136,5 +141,63 @@ export function createTeachingSteps(targets: ResolvedTeachingTarget[]): Teaching
         range: target.kind === 'range' ? target.range : null,
       },
     ];
+  });
+}
+
+/** Visual-plan focus actions that constitute teachable diagram moments. */
+const DIAGRAM_TEACHING_ACTIONS = new Set(['focus', 'highlightNode', 'pulse', 'annotate', 'explain_node', 'explain_edge']);
+
+export interface DiagramFocusAction {
+  type: string;
+  target?: string;
+  /** Same field the canonical VisualStep uses for its short text. */
+  text?: string;
+  /** Accepted as a note alias: models sometimes reach for it. */
+  detail?: string;
+}
+
+/**
+ * Builds diagram teaching steps from a visual plan's focus/explain actions.
+ * Order follows the plan; unknown targets are dropped (never guessed).
+ * Labels prefer the action note, falling back to the plan's node/edge label.
+ */
+export function createDiagramTeachingSteps(
+  actions: DiagramFocusAction[],
+  nodes: Array<{ id: string; label: string }>,
+  edges: Array<{ id: string; label?: string }>,
+): TeachingStep[] {
+  const nodeLabels = new Map(nodes.map((node) => [node.id, node.label]));
+  const edgeLabels = new Map(edges.map((edge) => [edge.id, edge.label ?? edge.id]));
+  return actions.flatMap((action, index): TeachingStep[] => {
+    if (!DIAGRAM_TEACHING_ACTIONS.has(action.type) || typeof action.target !== 'string') return [];
+    const raw = typeof action.text === 'string' && action.text.trim()
+      ? action.text
+      : typeof action.detail === 'string' ? action.detail : '';
+    const note = raw.trim() ? raw.trim().slice(0, 80) : null;
+    if (nodeLabels.has(action.target)) {
+      return [{
+        key: `diagram-step-${index}`,
+        kind: 'diagram_node',
+        startLine: 0,
+        endLine: 0,
+        column: null,
+        label: note ?? nodeLabels.get(action.target) ?? action.target,
+        range: null,
+        diagramId: action.target,
+      }];
+    }
+    if (edgeLabels.has(action.target)) {
+      return [{
+        key: `diagram-step-${index}`,
+        kind: 'diagram_edge',
+        startLine: 0,
+        endLine: 0,
+        column: null,
+        label: note ?? edgeLabels.get(action.target) ?? action.target,
+        range: null,
+        diagramId: action.target,
+      }];
+    }
+    return [];
   });
 }
